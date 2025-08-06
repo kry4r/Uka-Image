@@ -1,0 +1,68 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: uka-image-hosting-system
+  
+  # Database Configuration
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/uka_image_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123kabi}
+    
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+        
+  # File Upload Configuration
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+      enabled: true
+
+# MyBatis Plus Configuration
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# Tencent Cloud COS Configuration
+cos:
+  region: ${COS_REGION:ap-beijing}
+  secret-id: ${COS_SECRET_ID:your-secret-id}
+  secret-key: ${COS_SECRET_KEY:your-secret-key}
+  bucket-name: ${COS_BUCKET_NAME:uka-image-bucket}
+  base-url: ${COS_BASE_URL:https://uka-image-bucket.cos.ap-beijing.myqcloud.com}
+
+# Application Configuration
+app:
+  upload:
+    path: D:/Uka-Image/uploads
+    allowed-types: jpg,jpeg,png,gif,webp,bmp
+    max-size: 52428800  # 50MB in bytes
+    use-local-storage: true
+    base-url: http://localhost:8080/api/files
+  
+# Logging Configuration
+logging:
+  level:
+    com.uka.image: DEBUG
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

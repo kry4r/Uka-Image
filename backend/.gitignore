@@ -1,0 +1,93 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# IDE
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+
+# Spring Boot
+application-*.properties
+application-*.yml
+!application.yml
+!application-test.yml
+!application-example.yml
+
+# Logs
+*.log
+logs/
+spring.log
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Upload files
+uploads/
+static/uploads/
+src/main/resources/static/uploads/
+
+# Configuration files with sensitive data
+src/main/resources/application-prod.properties
+src/main/resources/application-production.properties
+src/main/resources/application-local.properties
+
+# Test files
+test-uploads/
+test-images/
+
+# JVM crash logs
+hs_err_pid*.log
+
+# Package Files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# virtual machine crash logs
+hs_err_pid*
