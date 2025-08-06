@@ -2,6 +2,11 @@
 
 A modern, full-stack image hosting system built with Spring Boot and Vue.js, featuring AI-powered search, multi-cloud storage support, and comprehensive image management capabilities.
 
+## Language / 语言
+
+- [English](README.md) - English Version (Current)
+- [中文](README_CN.md) - Chinese Version
+
 ## 🌟 Features
 
 ### Core Features
