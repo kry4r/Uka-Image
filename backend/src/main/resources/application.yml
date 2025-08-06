@@ -53,7 +53,7 @@ cos:
 # Application Configuration
 app:
   upload:
-    path: D:/Uka-Image/uploads
+    path: ./uploads
     allowed-types: jpg,jpeg,png,gif,webp,bmp
     max-size: 52428800  # 50MB in bytes
     use-local-storage: true

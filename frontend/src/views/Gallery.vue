@@ -265,9 +265,8 @@ const performSearch = async (page: number = 0) => {
     if (searchType.value === 'normal') {
       await imageStore.searchImages(keyword, page, 20)
     } else {
-      // AI search - placeholder for future implementation
-      console.log('AI search not implemented yet')
-      await imageStore.searchImages(keyword, page, 20)
+      // AI search using Spark AI
+      //await imageStore.aiSearchImages(keyword)
     }
   } catch (error) {
     console.error('Search failed:', error)

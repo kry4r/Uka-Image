@@ -79,10 +79,6 @@ mysql -u root -p uka_image_hosting < sql/init.sql
 ```bash
 cd backend
 
-# 配置数据库连接
-cp src/main/resources/application-example.yml src/main/resources/application.yml
-# 编辑 application.yml 填入数据库凭据
-
 # 安装依赖并运行
 mvn clean install
 mvn spring-boot:run
