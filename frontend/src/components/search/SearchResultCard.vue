@@ -3,8 +3,8 @@
     <!-- Image Preview -->
     <div class="image-preview">
       <img 
-        :src="image.value.thumbnailUrl || image.value.cosUrl" 
-        :alt="image.value.description || image.value.originalName"
+        :src="image.thumbnailUrl || image.cosUrl" 
+        :alt="image.description || image.originalName"
         class="preview-image"
         @error="handleImageError"
       />
@@ -39,28 +39,28 @@
     <!-- Image Information -->
     <div class="image-info">
       <!-- Title -->
-      <h4 class="image-title" :title="image.value.originalName">
-        {{ image.value.originalName || image.value.fileName }}
+      <h4 class="image-title" :title="image.originalName">
+        {{ image.originalName || image.fileName }}
       </h4>
       
       <!-- Description -->
-      <p class="image-description" v-if="image.value.description">
-        <span class="description-text">{{ truncateText(image.value.description, 100) }}</span>
+      <p class="image-description" v-if="image.description">
+        <span class="description-text">{{ truncateText(image.description, 100) }}</span>
       </p>
       
       <!-- Tags -->
-      <div class="tags-container" v-if="image.value.tags">
+      <div class="tags-container" v-if="image.tags">
         <div class="tags-list">
           <span 
-            v-for="tag in getTagList(image.value.tags).slice(0, 4)" 
+            v-for="tag in getTagList(image.tags).slice(0, 4)" 
             :key="tag"
             class="tag"
             :class="{ 'tag-matched': isTagMatched(tag) }"
           >
             {{ tag }}
           </span>
-          <span v-if="getTagList(image.value.tags).length > 4" class="tag-more">
-            +{{ getTagList(image.value.tags).length - 4 }}
+          <span v-if="getTagList(image.tags).length > 4" class="tag-more">
+            +{{ getTagList(image.tags).length - 4 }}
           </span>
         </div>
       </div>
@@ -70,18 +70,18 @@
         <div class="info-row">
           <span class="info-label">Format:</span>
           <span class="info-value" :class="{ 'value-matched': isFormatMatched() }">
-            {{ image.value.fileType || 'Unknown' }}
+            {{ image.fileType || 'Unknown' }}
           </span>
         </div>
         
         <div class="info-row">
           <span class="info-label">Size:</span>
-          <span class="info-value">{{ formatFileSize(image.value.fileSize) }}</span>
+          <span class="info-value">{{ formatFileSize(image.fileSize) }}</span>
         </div>
         
-        <div class="info-row" v-if="image.value.width && image.value.height">
+        <div class="info-row" v-if="image.width && image.height">
           <span class="info-label">Dimensions:</span>
-          <span class="info-value">{{ image.value.width }}×{{ image.value.height }}</span>
+          <span class="info-value">{{ image.width }}×{{ image.height }}</span>
         </div>
       </div>
       
@@ -119,8 +119,29 @@ const props = withDefaults(defineProps<Props>(), {
   searchQuery: ''
 })
 
-// Extract image data from result
-const image = computed(() => props.result.image || props.result)
+// Extract image data from result - handle different response structures
+const image = computed(() => {
+  // If result has an image property, use it
+  if (props.result.image) {
+    return props.result.image
+  }
+  // If result itself is the image data, use it directly
+  if (props.result.thumbnailUrl || props.result.cosUrl) {
+    return props.result
+  }
+  // Fallback to empty object to prevent errors
+  return {
+    thumbnailUrl: '',
+    cosUrl: '',
+    originalName: 'Unknown',
+    description: '',
+    tags: '',
+    fileType: '',
+    fileSize: 0,
+    width: 0,
+    height: 0
+  }
+})
 
 const emit = defineEmits<{
   click: [image: any]
@@ -170,9 +191,9 @@ const isTagMatched = (tag: string): boolean => {
 }
 
 const isFormatMatched = (): boolean => {
-  if (!props.searchQuery || !props.image.fileType) return false
-  return props.image.fileType.toLowerCase().includes(props.searchQuery.toLowerCase()) ||
-         props.searchQuery.toLowerCase().includes(props.image.fileType.toLowerCase())
+  if (!props.searchQuery || !image.value.fileType) return false
+  return image.value.fileType.toLowerCase().includes(props.searchQuery.toLowerCase()) ||
+         props.searchQuery.toLowerCase().includes(image.value.fileType.toLowerCase())
 }
 
 const handleImageError = (event: Event) => {

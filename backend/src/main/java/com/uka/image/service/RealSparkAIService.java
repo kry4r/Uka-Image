@@ -92,8 +92,9 @@ public class RealSparkAIService {
         // Prepare image metadata for AI analysis
         String imageMetadata = prepareImageMetadata(images);
         
-        // Create AI prompt for image search
-        String prompt = createSearchPrompt(searchQuery, imageMetadata);
+        // Create enhanced AI prompt with format analysis
+        String formatAnalysis = analyzeFormatCharacteristics(searchQuery);
+        String prompt = createSearchPrompt(searchQuery, formatAnalysis, imageMetadata);
         
         // Prepare request payload
         Map<String, Object> requestBody = new HashMap<>();
@@ -134,56 +135,171 @@ public class RealSparkAIService {
     }
 
     /**
-     * Prepare image metadata for AI analysis
+     * Prepare enhanced image metadata for comprehensive AI analysis
      */
     private String prepareImageMetadata(List<Image> images) {
         StringBuilder metadata = new StringBuilder();
-        metadata.append("Available Images:\n");
+        metadata.append("ENHANCED IMAGE METADATA ANALYSIS:\n\n");
         
-        for (int i = 0; i < Math.min(images.size(), 50); i++) { // Limit to 50 images to avoid token limits
+        for (int i = 0; i < Math.min(images.size(), 40); i++) { // Optimized limit for enhanced metadata
             Image image = images.get(i);
-            metadata.append(String.format("ID: %d, Name: %s, Description: %s, Tags: %s, Type: %s\n",
-                image.getId(),
-                image.getOriginalName() != null ? image.getOriginalName() : "Unknown",
-                image.getDescription() != null ? image.getDescription() : "No description",
-                image.getTags() != null ? image.getTags() : "No tags",
-                image.getFileType() != null ? image.getFileType() : "Unknown"
-            ));
+            
+            metadata.append(String.format("--- IMAGE ID: %d ---\n", image.getId()));
+            
+            // Basic Information
+            metadata.append(String.format("Original Name: %s\n", 
+                image.getOriginalName() != null ? image.getOriginalName() : "Unknown"));
+            metadata.append(String.format("Current Filename: %s\n", 
+                image.getFileName() != null ? image.getFileName() : "Unknown"));
+            
+            // Format & Technical Details
+            metadata.append(String.format("Format: %s | Type: %s\n", 
+                image.getFileFormat() != null ? image.getFileFormat() : "Unknown",
+                image.getFileType() != null ? image.getFileType() : "Unknown"));
+            
+            // Resolution & Size Information
+            if (image.getWidth() != null && image.getHeight() != null) {
+                metadata.append(String.format("Dimensions: %dx%d | Aspect: %.2f\n", 
+                    image.getWidth(), image.getHeight(), 
+                    (double) image.getWidth() / image.getHeight()));
+            }
+            
+            if (image.getResolutionCategory() != null) {
+                metadata.append(String.format("Resolution Category: %s\n", image.getResolutionCategory()));
+            }
+            
+            if (image.getFileSize() != null) {
+                metadata.append(String.format("File Size: %d bytes (%.2f MB)\n", 
+                    image.getFileSize(), image.getFileSize() / (1024.0 * 1024.0)));
+            }
+            
+            // Visual Properties
+            if (image.getOrientation() != null) {
+                metadata.append(String.format("Orientation: %s\n", image.getOrientation()));
+            }
+            
+            if (image.getBrightnessLevel() != null) {
+                metadata.append(String.format("Brightness: %.2f\n", image.getBrightnessLevel()));
+            }
+            
+            if (image.getColorProfile() != null) {
+                metadata.append(String.format("Color Profile: %s\n", image.getColorProfile()));
+            }
+            
+            // Content Analysis
+            metadata.append(String.format("Description: %s\n", 
+                image.getDescription() != null && !image.getDescription().trim().isEmpty() 
+                    ? image.getDescription() : "No description available"));
+            
+            metadata.append(String.format("Tags: %s\n", 
+                image.getTags() != null && !image.getTags().trim().isEmpty() 
+                    ? image.getTags() : "No tags"));
+            
+            if (image.getAiGeneratedTags() != null && !image.getAiGeneratedTags().trim().isEmpty()) {
+                metadata.append(String.format("AI Tags: %s\n", image.getAiGeneratedTags()));
+            }
+            
+            if (image.getSemanticKeywords() != null && !image.getSemanticKeywords().trim().isEmpty()) {
+                metadata.append(String.format("Keywords: %s\n", image.getSemanticKeywords()));
+            }
+            
+            if (image.getContentCategory() != null) {
+                metadata.append(String.format("Category: %s\n", image.getContentCategory()));
+            }
+            
+            // Upload Time Context
+            if (image.getCreatedAt() != null) {
+                metadata.append(String.format("Upload Time: %s\n", image.getCreatedAt().toString()));
+            }
+            
+            // Quality Indicators
+            if (image.getViewCount() != null && image.getViewCount() > 0) {
+                metadata.append(String.format("Views: %d\n", image.getViewCount()));
+            }
+            
+            metadata.append("\n");
         }
         
         return metadata.toString();
     }
 
     /**
-     * Create AI prompt for image search
+     * Create enhanced AI prompt for intelligent image search with format recognition
      */
-    private String createSearchPrompt(String searchQuery, String imageMetadata) {
+    private String createSearchPrompt(String searchQuery, String imageMetadata, String formatAnalysis) {
         return String.format("""
-            You are an intelligent image search assistant. Based on the user's search query and the available image metadata, 
-            identify the most relevant images and return their IDs in order of relevance.
+            You are an advanced AI image search assistant with expertise in format recognition, metadata analysis, and content understanding.
             
-            User Search Query: "%s"
+            SEARCH QUERY: "%s"
             
             %s
             
-            Instructions:
-            1. Analyze the search query to understand what the user is looking for
-            2. Match the query against image names, descriptions, tags, and file types
-            3. Consider semantic similarity, not just exact keyword matches
-            4. Return ONLY the numeric image IDs of relevant matches, separated by commas
-            5. Order the results by relevance (most relevant first)
-            6. If no images are relevant, return "NO_MATCHES"
-            7. IMPORTANT: Return ONLY numbers separated by commas, no other text or formatting
+            AVAILABLE IMAGES:
+            %s
             
-            Examples:
-            - Good response: "2,1,3"
-            - Good response: "2"
-            - Good response: "NO_MATCHES"
-            - Bad response: "ID1,ID2,ID3"
-            - Bad response: "Image 2 is most relevant"
+            ENHANCED ANALYSIS INSTRUCTIONS:
             
-            Response format: Just the numbers separated by commas, nothing else.
-            """, searchQuery, imageMetadata);
+            1. FORMAT RECOGNITION & ANALYSIS:
+               - Identify image formats (JPEG, PNG, WebP, GIF, BMP, TIFF) with high accuracy
+               - Consider format-specific characteristics (transparency for PNG, animation for GIF, compression for JPEG)
+               - Match format requirements in search queries (e.g., "transparent image" → PNG preference)
+               - Analyze format suitability for intended use (web, print, editing)
+            
+            2. RESOLUTION & SIZE DETECTION:
+               - Parse resolution information from metadata and filenames
+               - Identify quality levels: LOW (<1MP), MEDIUM (1-5MP), HIGH (5-20MP), ULTRA_HIGH (>20MP)
+               - Detect dimension patterns in filenames (e.g., "1920x1080", "4K", "HD")
+               - Consider aspect ratios and orientation preferences
+            
+            3. FILENAME INTELLIGENCE:
+               - Extract semantic meaning from filenames beyond keywords
+               - Recognize naming conventions (IMG_001, DSC_, photo_, screenshot_)
+               - Identify date/time patterns in filenames
+               - Parse technical specifications embedded in names
+               - Consider file naming context and patterns
+            
+            4. DESCRIPTION & CONTENT ANALYSIS:
+               - Perform deep semantic analysis of descriptions
+               - Identify visual elements, subjects, and composition
+               - Recognize artistic styles, moods, and themes
+               - Match conceptual queries with descriptive content
+               - Consider emotional and aesthetic qualities
+            
+            5. UPLOAD TIME CONTEXT:
+               - Factor in temporal relevance for time-sensitive queries
+               - Prioritize recent uploads for "new", "latest", "recent" queries
+               - Consider seasonal relevance and time-based context
+               - Balance freshness with relevance for general queries
+            
+            6. MULTI-DIMENSIONAL MATCHING:
+               - Combine format, resolution, content, and temporal factors
+               - Weight different aspects based on query intent
+               - Provide holistic relevance scoring
+               - Consider user intent beyond literal keywords
+            
+            QUERY ANALYSIS FRAMEWORK:
+            - Technical queries: Prioritize format, resolution, file properties
+            - Visual queries: Focus on content, composition, aesthetic qualities  
+            - Semantic queries: Emphasize description matching and conceptual understanding
+            - Temporal queries: Weight upload time and freshness factors
+            - Hybrid queries: Balance multiple factors intelligently
+            
+            OUTPUT REQUIREMENTS:
+            - Return ONLY numeric image IDs separated by commas
+            - Order by comprehensive relevance score (highest first)
+            - Maximum 20 results for optimal performance
+            - Return "NO_MATCHES" if no relevant images found
+            - NO explanations, formatting, or additional text
+            
+            EXAMPLES:
+            ✓ Correct: "15,7,23,1"
+            ✓ Correct: "42"
+            ✓ Correct: "NO_MATCHES"
+            ✗ Wrong: "Image 15 matches best"
+            ✗ Wrong: "IDs: 15,7,23"
+            
+            RESPONSE: [Image IDs only]
+            """, searchQuery, formatAnalysis, imageMetadata);
     }
 
     /**
@@ -341,6 +457,61 @@ public class RealSparkAIService {
             log.error("iFlytek Spark AI health check failed: {}", e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Analyze format-specific characteristics for enhanced AI understanding
+     */
+    private String analyzeFormatCharacteristics(String searchQuery) {
+        StringBuilder analysis = new StringBuilder();
+        analysis.append("FORMAT ANALYSIS CONTEXT:\n");
+        
+        String lowerQuery = searchQuery.toLowerCase();
+        
+        // Format-specific requirements detection
+        if (lowerQuery.contains("transparent") || lowerQuery.contains("transparency")) {
+            analysis.append("- TRANSPARENCY REQUIRED: Prioritize PNG, WebP formats\n");
+        }
+        
+        if (lowerQuery.contains("animated") || lowerQuery.contains("animation") || lowerQuery.contains("gif")) {
+            analysis.append("- ANIMATION REQUIRED: Prioritize GIF, WebP formats\n");
+        }
+        
+        if (lowerQuery.contains("high quality") || lowerQuery.contains("lossless")) {
+            analysis.append("- HIGH QUALITY: Prioritize PNG, TIFF, uncompressed formats\n");
+        }
+        
+        if (lowerQuery.contains("web") || lowerQuery.contains("website") || lowerQuery.contains("online")) {
+            analysis.append("- WEB OPTIMIZED: Prioritize JPEG, WebP, optimized PNG\n");
+        }
+        
+        if (lowerQuery.contains("print") || lowerQuery.contains("printing")) {
+            analysis.append("- PRINT QUALITY: Prioritize TIFF, high-res JPEG, PNG\n");
+        }
+        
+        // Resolution requirements
+        if (lowerQuery.contains("hd") || lowerQuery.contains("1080") || lowerQuery.contains("720")) {
+            analysis.append("- HD RESOLUTION: Look for 1280x720 or 1920x1080 dimensions\n");
+        }
+        
+        if (lowerQuery.contains("4k") || lowerQuery.contains("ultra") || lowerQuery.contains("uhd")) {
+            analysis.append("- 4K/ULTRA: Look for 3840x2160 or higher dimensions\n");
+        }
+        
+        if (lowerQuery.contains("thumbnail") || lowerQuery.contains("small") || lowerQuery.contains("icon")) {
+            analysis.append("- SMALL SIZE: Prioritize images under 500x500 pixels\n");
+        }
+        
+        // Time-based context
+        if (lowerQuery.contains("recent") || lowerQuery.contains("new") || lowerQuery.contains("latest")) {
+            analysis.append("- TEMPORAL PRIORITY: Weight recent uploads higher\n");
+        }
+        
+        if (lowerQuery.contains("old") || lowerQuery.contains("vintage") || lowerQuery.contains("classic")) {
+            analysis.append("- HISTORICAL CONTEXT: Consider older uploads or vintage content\n");
+        }
+        
+        return analysis.toString();
     }
 
     /**

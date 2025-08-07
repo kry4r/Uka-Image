@@ -67,12 +67,12 @@ public class AISearchController {
         List<String> processingSteps = new ArrayList<>();
         
         try {
-            log.info("Metadata-based search request: query='{}', page={}, size={}, formats={}, orientation={}", 
+            log.info("AI-powered search request: query='{}', page={}, size={}, formats={}, orientation={}", 
                 query, pageNum, pageSize, fileFormats, orientation);
             
             processingSteps.add("Request received and validated");
             searchContext.put("searchQuery", query);
-            searchContext.put("searchType", "METADATA_BASED");
+            searchContext.put("searchType", "AI_POWERED");
             searchContext.put("parameters", Map.of(
                 "pageNum", pageNum,
                 "pageSize", pageSize,
@@ -200,15 +200,15 @@ public class AISearchController {
             searchInfo.put("searchDuration", System.currentTimeMillis() - searchStartTime);
             searchInfo.put("processingSteps", processingSteps);
             searchInfo.put("searchStrategy", aiSearchUsed ? 
-                "iFlytek Spark AI-powered intelligent search with weighted scoring" : 
-                "Comprehensive metadata matching with weighted scoring");
+                "iFlytek Spark AI-powered intelligent search with AI-driven relevance scoring" : 
+                "Comprehensive metadata matching with AI-driven relevance scoring");
             response.getSearchInsights().put("searchInfo", searchInfo);
 
             long searchDuration = System.currentTimeMillis() - searchStartTime;
-            log.info("Metadata-based search completed: found {} total results, returning {} for page {} in {}ms", 
+            log.info("AI-powered search completed: found {} total results, returning {} for page {} in {}ms", 
                 totalResults, paginatedResults.size(), pageNum, searchDuration);
 
-            String responseMessage = String.format("Found %d relevant images using metadata-based search", totalResults);
+            String responseMessage = String.format("Found %d relevant images using AI-powered search", totalResults);
             return ApiResponse.success(responseMessage, response);
 
         } catch (Exception e) {
@@ -223,7 +223,7 @@ public class AISearchController {
             detailedError.setRequestParameters(extractRequestParameters(request));
             
             // Log comprehensive error information
-            log.error("Metadata-based search encountered unexpected error with full context: {}", detailedError, e);
+            log.error("AI-powered search encountered unexpected error with full context: {}", detailedError, e);
             
             // Return detailed error response
             ApiResponse<EnhancedSearchResponse> errorResponse = ApiResponse.error("Search failed: " + e.getMessage());

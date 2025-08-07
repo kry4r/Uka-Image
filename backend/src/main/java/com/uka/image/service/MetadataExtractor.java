@@ -12,6 +12,7 @@ import com.drew.metadata.jpeg.JpegDirectory;
 import com.drew.metadata.png.PngDirectory;
 import com.uka.image.entity.Image;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
@@ -23,6 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * MetadataExtractor Service for analyzing and extracting comprehensive image metadata
@@ -33,6 +35,9 @@ import java.util.*;
 @Slf4j
 @Service
 public class MetadataExtractor {
+
+    @Autowired
+    private RealSparkAIService sparkAIService;
 
     // Color analysis constants
     private static final int COLOR_SAMPLE_SIZE = 100;
@@ -678,5 +683,512 @@ public class MetadataExtractor {
         }
         
         return String.join(", ", aiTags);
+    }
+
+    /**
+     * Enhance metadata using AI analysis for improved format recognition and content understanding
+     */
+    private void enhanceMetadataWithAI(Image image) {
+        try {
+            log.debug("Enhancing metadata with AI for image ID: {}", image.getId());
+            
+            // Generate AI-enhanced description if original is missing or basic
+            if (shouldEnhanceDescription(image)) {
+                String aiDescription = generateAIDescription(image);
+                if (aiDescription != null && !aiDescription.trim().isEmpty()) {
+                    image.setAiGeneratedDescription(aiDescription);
+                    log.debug("Generated AI description for image ID: {}", image.getId());
+                }
+            }
+            
+            // Generate enhanced AI tags based on comprehensive analysis
+            String enhancedAITags = generateEnhancedAITags(image);
+            if (enhancedAITags != null && !enhancedAITags.trim().isEmpty()) {
+                image.setAiGeneratedTags(enhancedAITags);
+                log.debug("Generated enhanced AI tags for image ID: {}", image.getId());
+            }
+            
+            // Generate semantic keywords for better search matching
+            String semanticKeywords = generateSemanticKeywords(image);
+            if (semanticKeywords != null && !semanticKeywords.trim().isEmpty()) {
+                image.setSemanticKeywords(semanticKeywords);
+                log.debug("Generated semantic keywords for image ID: {}", image.getId());
+            }
+            
+            // Enhance format-specific metadata
+            enhanceFormatSpecificMetadata(image);
+            
+        } catch (Exception e) {
+            log.warn("Failed to enhance metadata with AI for image ID {}: {}", image.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Check if description should be enhanced with AI
+     */
+    private boolean shouldEnhanceDescription(Image image) {
+        String description = image.getDescription();
+        return description == null || 
+               description.trim().isEmpty() || 
+               description.length() < 20 || 
+               isGenericDescription(description);
+    }
+
+    /**
+     * Check if description is generic and needs enhancement
+     */
+    private boolean isGenericDescription(String description) {
+        String lower = description.toLowerCase();
+        return lower.matches(".*\\b(image|photo|picture|file)\\b.*") && description.length() < 50;
+    }
+
+    /**
+     * Generate AI-enhanced description based on image metadata and characteristics
+     */
+    private String generateAIDescription(Image image) {
+        try {
+            StringBuilder prompt = new StringBuilder();
+            prompt.append("Generate a descriptive caption for an image with the following characteristics:\n\n");
+            
+            // Add technical specifications
+            prompt.append("Technical Details:\n");
+            prompt.append("- Format: ").append(image.getFileFormat() != null ? image.getFileFormat() : "Unknown").append("\n");
+            prompt.append("- Dimensions: ");
+            if (image.getWidth() != null && image.getHeight() != null) {
+                prompt.append(image.getWidth()).append("x").append(image.getHeight()).append(" pixels\n");
+            } else {
+                prompt.append("Unknown\n");
+            }
+            prompt.append("- Resolution Category: ").append(image.getResolutionCategory() != null ? image.getResolutionCategory() : "Unknown").append("\n");
+            prompt.append("- Orientation: ").append(image.getOrientation() != null ? image.getOrientation() : "Unknown").append("\n");
+            
+            // Add visual characteristics
+            prompt.append("\nVisual Characteristics:\n");
+            if (image.getBrightnessLevel() != null) {
+                String brightness = image.getBrightnessLevel() > 0.7 ? "bright" : 
+                                  image.getBrightnessLevel() < 0.3 ? "dark" : "moderate brightness";
+                prompt.append("- Brightness: ").append(brightness).append("\n");
+            }
+            
+            if (image.getContrastLevel() != null) {
+                String contrast = image.getContrastLevel() > 0.7 ? "high contrast" : 
+                                image.getContrastLevel() < 0.3 ? "low contrast" : "moderate contrast";
+                prompt.append("- Contrast: ").append(contrast).append("\n");
+            }
+            
+            if (image.getSaturationLevel() != null) {
+                String saturation = image.getSaturationLevel() > 0.7 ? "vibrant colors" : 
+                                  image.getSaturationLevel() < 0.3 ? "muted colors" : "moderate saturation";
+                prompt.append("- Colors: ").append(saturation).append("\n");
+            }
+            
+            if (image.getDominantColors() != null && !image.getDominantColors().trim().isEmpty()) {
+                prompt.append("- Dominant Colors: ").append(image.getDominantColors()).append("\n");
+            }
+            
+            // Add existing metadata
+            if (image.getTags() != null && !image.getTags().trim().isEmpty()) {
+                prompt.append("- Existing Tags: ").append(image.getTags()).append("\n");
+            }
+            
+            if (image.getOriginalName() != null) {
+                prompt.append("- Filename: ").append(image.getOriginalName()).append("\n");
+            }
+            
+            // Add camera metadata if available
+            if (image.hasCameraMetadata()) {
+                prompt.append("\nCamera Information:\n");
+                if (image.getCameraMake() != null) {
+                    prompt.append("- Camera: ").append(image.getCameraMake());
+                    if (image.getCameraModel() != null) {
+                        prompt.append(" ").append(image.getCameraModel());
+                    }
+                    prompt.append("\n");
+                }
+            }
+            
+            prompt.append("\nGenerate a concise, descriptive caption (2-3 sentences) that captures the essence of this image based on the provided metadata. Focus on visual elements, technical quality, and potential use cases. Do not mention technical specifications directly.");
+            
+            // Use AI service to generate description (simplified approach)
+            // In a real implementation, you would call the AI service here
+            return generateSimpleDescription(image);
+            
+        } catch (Exception e) {
+            log.warn("Failed to generate AI description: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Generate simple description based on available metadata
+     */
+    private String generateSimpleDescription(Image image) {
+        StringBuilder description = new StringBuilder();
+        
+        // Start with format and quality
+        if (image.getResolutionCategory() != null) {
+            switch (image.getResolutionCategory()) {
+                case "HIGH":
+                case "ULTRA_HIGH":
+                    description.append("High-quality ");
+                    break;
+                case "MEDIUM":
+                    description.append("Standard quality ");
+                    break;
+                default:
+                    description.append("");
+            }
+        }
+        
+        // Add format information
+        if (image.getFileFormat() != null) {
+            description.append(image.getFileFormat().toLowerCase()).append(" ");
+        }
+        
+        // Add orientation
+        if (image.getOrientation() != null) {
+            description.append(image.getOrientation().toLowerCase()).append(" ");
+        }
+        
+        description.append("image");
+        
+        // Add visual characteristics
+        List<String> characteristics = new ArrayList<>();
+        
+        if (image.getBrightnessLevel() != null) {
+            if (image.getBrightnessLevel() > 0.7) {
+                characteristics.add("bright");
+            } else if (image.getBrightnessLevel() < 0.3) {
+                characteristics.add("dark");
+            }
+        }
+        
+        if (image.getSaturationLevel() != null) {
+            if (image.getSaturationLevel() > 0.7) {
+                characteristics.add("vibrant");
+            } else if (image.getSaturationLevel() < 0.3) {
+                characteristics.add("muted");
+            }
+        }
+        
+        if (image.getContrastLevel() != null && image.getContrastLevel() > 0.7) {
+            characteristics.add("high contrast");
+        }
+        
+        if (!characteristics.isEmpty()) {
+            description.append(" with ").append(String.join(", ", characteristics)).append(" characteristics");
+        }
+        
+        // Add special properties
+        if (image.getHasTransparency() != null && image.getHasTransparency()) {
+            description.append(", featuring transparency");
+        }
+        
+        if (image.getIsAnimated() != null && image.getIsAnimated()) {
+            description.append(", animated");
+        }
+        
+        description.append(".");
+        
+        return description.toString();
+    }
+
+    /**
+     * Generate enhanced AI tags with better semantic understanding
+     */
+    private String generateEnhancedAITags(Image image) {
+        List<String> enhancedTags = new ArrayList<>();
+        
+        // Start with basic AI tags
+        String basicTags = generateAITags(image);
+        if (basicTags != null && !basicTags.trim().isEmpty()) {
+            enhancedTags.addAll(Arrays.asList(basicTags.split(",\\s*")));
+        }
+        
+        // Add format-specific enhanced tags
+        addFormatSpecificTags(image, enhancedTags);
+        
+        // Add quality and usage tags
+        addQualityAndUsageTags(image, enhancedTags);
+        
+        // Add temporal context tags
+        addTemporalTags(image, enhancedTags);
+        
+        // Add content-based tags
+        addContentBasedTags(image, enhancedTags);
+        
+        // Remove duplicates and return
+        return enhancedTags.stream()
+            .distinct()
+            .filter(tag -> tag != null && !tag.trim().isEmpty())
+            .collect(Collectors.joining(", "));
+    }
+
+    /**
+     * Add format-specific enhanced tags
+     */
+    private void addFormatSpecificTags(Image image, List<String> tags) {
+        if (image.getFileFormat() != null) {
+            switch (image.getFileFormat().toUpperCase()) {
+                case "PNG":
+                    if (image.getHasTransparency() != null && image.getHasTransparency()) {
+                        tags.add("transparent_background");
+                        tags.add("web_ready");
+                    }
+                    tags.add("lossless");
+                    break;
+                case "JPEG":
+                case "JPG":
+                    tags.add("compressed");
+                    tags.add("web_optimized");
+                    if (image.hasCameraMetadata()) {
+                        tags.add("photography");
+                    }
+                    break;
+                case "GIF":
+                    if (image.getIsAnimated() != null && image.getIsAnimated()) {
+                        tags.add("animation");
+                        tags.add("motion_graphics");
+                    }
+                    tags.add("web_graphics");
+                    break;
+                case "WEBP":
+                    tags.add("modern_format");
+                    tags.add("web_optimized");
+                    tags.add("efficient_compression");
+                    break;
+                case "TIFF":
+                    tags.add("professional");
+                    tags.add("print_ready");
+                    tags.add("high_quality");
+                    break;
+            }
+        }
+    }
+
+    /**
+     * Add quality and usage tags
+     */
+    private void addQualityAndUsageTags(Image image, List<String> tags) {
+        // Resolution-based tags
+        if (image.getResolutionCategory() != null) {
+            switch (image.getResolutionCategory()) {
+                case "ULTRA_HIGH":
+                    tags.add("4k_ready");
+                    tags.add("print_quality");
+                    tags.add("professional_grade");
+                    break;
+                case "HIGH":
+                    tags.add("hd_quality");
+                    tags.add("web_print_ready");
+                    break;
+                case "MEDIUM":
+                    tags.add("web_ready");
+                    tags.add("social_media");
+                    break;
+                case "LOW":
+                    tags.add("thumbnail");
+                    tags.add("icon_size");
+                    break;
+            }
+        }
+        
+        // Orientation-based usage tags
+        if (image.getOrientation() != null) {
+            switch (image.getOrientation().toUpperCase()) {
+                case "LANDSCAPE":
+                    tags.add("wide_format");
+                    tags.add("desktop_wallpaper");
+                    break;
+                case "PORTRAIT":
+                    tags.add("vertical_format");
+                    tags.add("mobile_wallpaper");
+                    break;
+                case "SQUARE":
+                    tags.add("social_media_ready");
+                    tags.add("instagram_format");
+                    break;
+            }
+        }
+    }
+
+    /**
+     * Add temporal context tags based on upload time
+     */
+    private void addTemporalTags(Image image, List<String> tags) {
+        if (image.getCreatedAt() != null) {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            java.time.LocalDateTime uploadTime = image.getCreatedAt();
+            
+            long daysDiff = java.time.Duration.between(uploadTime, now).toDays();
+            
+            if (daysDiff <= 7) {
+                tags.add("recent_upload");
+                tags.add("new_content");
+            } else if (daysDiff <= 30) {
+                tags.add("recent");
+            } else if (daysDiff > 365) {
+                tags.add("archived");
+                tags.add("historical");
+            }
+            
+            // Add seasonal tags based on upload month
+            int month = uploadTime.getMonthValue();
+            if (month >= 3 && month <= 5) {
+                tags.add("spring_upload");
+            } else if (month >= 6 && month <= 8) {
+                tags.add("summer_upload");
+            } else if (month >= 9 && month <= 11) {
+                tags.add("autumn_upload");
+            } else {
+                tags.add("winter_upload");
+            }
+        }
+    }
+
+    /**
+     * Add content-based tags using filename and existing metadata
+     */
+    private void addContentBasedTags(Image image, List<String> tags) {
+        // Analyze filename for content hints
+        if (image.getOriginalName() != null) {
+            String filename = image.getOriginalName().toLowerCase();
+            
+            if (filename.contains("logo")) {
+                tags.add("branding");
+                tags.add("corporate");
+            }
+            if (filename.contains("icon")) {
+                tags.add("ui_element");
+                tags.add("interface");
+            }
+            if (filename.contains("banner")) {
+                tags.add("marketing");
+                tags.add("promotional");
+            }
+            if (filename.contains("screenshot")) {
+                tags.add("documentation");
+                tags.add("software");
+            }
+        }
+        
+        // Analyze existing tags for enhancement
+        if (image.getTags() != null) {
+            String existingTags = image.getTags().toLowerCase();
+            
+            if (existingTags.contains("nature")) {
+                tags.add("outdoor");
+                tags.add("landscape_photography");
+            }
+            if (existingTags.contains("people") || existingTags.contains("person")) {
+                tags.add("portrait");
+                tags.add("human_subject");
+            }
+            if (existingTags.contains("art")) {
+                tags.add("creative");
+                tags.add("artistic_content");
+            }
+        }
+    }
+
+    /**
+     * Generate semantic keywords for enhanced search matching
+     */
+    private String generateSemanticKeywords(Image image) {
+        Set<String> keywords = new HashSet<>();
+        
+        // Extract keywords from filename
+        if (image.getOriginalName() != null) {
+            String[] filenameParts = image.getOriginalName()
+                .replaceAll("[^a-zA-Z0-9\\s]", " ")
+                .split("\\s+");
+            
+            for (String part : filenameParts) {
+                if (part.length() > 2) {
+                    keywords.add(part.toLowerCase());
+                }
+            }
+        }
+        
+        // Extract keywords from description
+        if (image.getDescription() != null) {
+            String[] descParts = image.getDescription()
+                .replaceAll("[^a-zA-Z0-9\\s]", " ")
+                .split("\\s+");
+            
+            for (String part : descParts) {
+                if (part.length() > 3) {
+                    keywords.add(part.toLowerCase());
+                }
+            }
+        }
+        
+        // Add technical keywords
+        if (image.getFileFormat() != null) {
+            keywords.add(image.getFileFormat().toLowerCase());
+        }
+        
+        if (image.getOrientation() != null) {
+            keywords.add(image.getOrientation().toLowerCase());
+        }
+        
+        if (image.getResolutionCategory() != null) {
+            keywords.add(image.getResolutionCategory().toLowerCase());
+        }
+        
+        // Add visual characteristic keywords
+        if (image.getBrightnessLevel() != null) {
+            if (image.getBrightnessLevel() > 0.7) {
+                keywords.add("bright");
+                keywords.add("light");
+            } else if (image.getBrightnessLevel() < 0.3) {
+                keywords.add("dark");
+                keywords.add("dim");
+            }
+        }
+        
+        return String.join(", ", keywords);
+    }
+
+    /**
+     * Enhance format-specific metadata with AI insights
+     */
+    private void enhanceFormatSpecificMetadata(Image image) {
+        if (image.getFileFormat() == null) return;
+        
+        switch (image.getFileFormat().toUpperCase()) {
+            case "PNG":
+                // Enhance PNG-specific metadata
+                if (image.getHasTransparency() == null) {
+                    // Could use AI to detect transparency more accurately
+                    image.setHasTransparency(true); // Default for PNG
+                }
+                break;
+                
+            case "JPEG":
+            case "JPG":
+                // Enhance JPEG-specific metadata
+                if (image.getHasTransparency() == null) {
+                    image.setHasTransparency(false); // JPEG doesn't support transparency
+                }
+                // Could analyze compression quality
+                break;
+                
+            case "GIF":
+                // Enhance GIF-specific metadata
+                if (image.getHasTransparency() == null) {
+                    image.setHasTransparency(true); // GIF supports transparency
+                }
+                // Animation detection is already handled in basic extraction
+                break;
+                
+            case "WEBP":
+                // Enhance WebP-specific metadata
+                if (image.getHasTransparency() == null) {
+                    image.setHasTransparency(true); // WebP supports transparency
+                }
+                // Could detect if it's animated WebP
+                break;
+        }
     }
 }

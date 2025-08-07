@@ -117,6 +117,9 @@ public class Image {
 
     @Column(name = "ai_generated_tags", columnDefinition = "TEXT")
     private String aiGeneratedTags;
+    
+    @Column(name = "ai_generated_description", columnDefinition = "TEXT")
+    private String aiGeneratedDescription;
 
     @Column(name = "semantic_keywords", columnDefinition = "TEXT")
     private String semanticKeywords;

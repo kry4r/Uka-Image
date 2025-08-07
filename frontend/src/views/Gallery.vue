@@ -131,6 +131,19 @@
               </span>
             </div>
             
+            <!-- Threshold warning when showing fallback results -->
+            <div v-if="showThresholdWarning" class="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div class="flex items-center">
+                <svg class="w-4 h-4 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"/>
+                </svg>
+                <span class="text-sm text-yellow-800 font-medium">Lower Relevance Results</span>
+              </div>
+              <p class="text-xs text-yellow-700 mt-1">
+                No results met the 75% relevance threshold. Showing all available results with lower relevance scores.
+              </p>
+            </div>
+            
             <!-- AI Model Information Display -->
             <div v-if="aiModelInfo" :class="[
               'border rounded-lg p-3 text-sm',
@@ -288,25 +301,49 @@
           </div>
         </div>
 
-        <!-- Pagination (only for normal search) -->
-        <div v-if="searchType === 'normal' && imageStore.images.length > 0" class="flex justify-center items-center space-x-4 mt-8">
-          <button
-            @click="previousPage"
-            :disabled="!imageStore.hasPrevPage"
-            class="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-          <span class="text-sm text-gray-600">
-            Page {{ imageStore.pagination.page + 1 }} of {{ imageStore.pagination.totalPages }}
-          </span>
-          <button
-            @click="nextPage"
-            :disabled="!imageStore.hasNextPage"
-            class="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
+        <!-- Pagination -->
+        <div v-if="hasResults" class="flex justify-center items-center space-x-4 mt-8">
+          <!-- Normal search pagination -->
+          <template v-if="searchType === 'normal' && imageStore.images.length > 0">
+            <button
+              @click="previousPage"
+              :disabled="!imageStore.hasPrevPage"
+              class="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span class="text-sm text-gray-600">
+              Page {{ imageStore.pagination.page + 1 }} of {{ imageStore.pagination.totalPages }}
+            </span>
+            <button
+              @click="nextPage"
+              :disabled="!imageStore.hasNextPage"
+              class="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </template>
+          
+          <!-- AI search pagination -->
+          <template v-if="searchType === 'ai' && aiSearchResults.length > 0 && aiModelInfo">
+            <button
+              @click="previousAiPage"
+              :disabled="aiCurrentPage <= 1"
+              class="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span class="text-sm text-gray-600">
+              Page {{ aiCurrentPage }} of {{ aiTotalPages }}
+            </span>
+            <button
+              @click="nextAiPage"
+              :disabled="aiCurrentPage >= aiTotalPages"
+              class="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </template>
         </div>
       </div>
     </div>
@@ -346,6 +383,13 @@ const aiSearchResults = ref<ScoredResult[]>([])
 const aiSearchLoading = ref(false)
 const aiModelInfo = ref<any>(null)
 
+// AI search pagination state
+const aiCurrentPage = ref(1)
+const aiPageSize = ref(20)
+
+// Threshold warning state
+const showThresholdWarning = ref(false)
+
 // Modal state
 const showDetailModal = ref(false)
 const selectedImage = ref<Image | null>(null)
@@ -359,6 +403,12 @@ const availableTags = computed(() => {
     }
   })
   return Array.from(tags).sort()
+})
+
+// AI pagination computed properties
+const aiTotalPages = computed(() => {
+  if (!aiModelInfo.value || !aiModelInfo.value.totalResults) return 1
+  return Math.ceil(aiModelInfo.value.totalResults / aiPageSize.value)
 })
 
 // Check if we have any results to show
@@ -387,12 +437,31 @@ const handleSearchClick = () => {
   performSearch(0)
 }
 
+// Helper function to check if any attribute relevance exceeds 75% threshold
+const isValidSearchResult = (result: ScoredResult): boolean => {
+  const threshold = 0.75
+  return (
+    result.aiRelevanceScore >= threshold ||
+    result.formatMatchScore >= threshold ||
+    result.temporalRelevanceScore >= threshold ||
+    result.contentQualityScore >= threshold
+  )
+}
+
+// Store all results for fallback display
+const allAiSearchResults = ref<ScoredResult[]>([])
+
 const performSearch = async (page: number = 0) => {
   if (!searchQuery.value.trim() && selectedTags.value.length === 0) {
     return
   }
 
   isSearching.value = true
+  
+  // Reset AI pagination when starting a new search (page 0)
+  if (page === 0 && searchType.value === 'ai') {
+    aiCurrentPage.value = 1
+  }
   
   try {
     let keyword = searchQuery.value.trim()
@@ -407,40 +476,66 @@ const performSearch = async (page: number = 0) => {
       await imageStore.searchImages(keyword, page, 20)
       aiSearchResults.value = []
     } else {
-      // Enhanced AI search
+      // Enhanced AI search - use page + 1 for API call (1-based pagination)
+      const apiPage = page + 1
       aiSearchLoading.value = true
       try {
         console.log('🤖 Starting AI Search...')
         console.log('🔍 Search Query:', keyword)
-        console.log('📄 Page:', page + 1, 'Size:', 20)
+        console.log('📄 Page:', apiPage, 'Size:', aiPageSize.value)
         
-        const response = await aiSearchApi.enhancedSearch(keyword, page + 1, 20)
+        const response = await aiSearchApi.enhancedSearch(keyword, apiPage, aiPageSize.value)
         
         console.log('✅ AI Search Response:', response.data)
         
-        // Check if response has the expected structure
-        if (response.data && response.data.code === 200 && response.data.data) {
-          // Handle the wrapped response format
-          const searchData = response.data.data
+        // The response.data directly contains the search results
+        if (response.data && response.data.results) {
+          const searchData = response.data
           
-          aiSearchResults.value = searchData.results || []
+          // Get all results from the response
+          const allResults = searchData.results || []
+          
+          // Store all results for potential fallback display
+          allAiSearchResults.value = allResults
+          
+          // Filter results based on 75% attribute relevance threshold
+          const validResults = allResults.filter(isValidSearchResult)
+          
+          console.log(`🎯 Filtered results: ${validResults.length}/${allResults.length} passed 75% threshold`)
+          
+          // If no results meet the threshold, show all results with a warning
+          if (validResults.length === 0 && allResults.length > 0) {
+            console.log('⚠️ No results met 75% threshold, showing all results with lower relevance')
+            aiSearchResults.value = allResults
+            showThresholdWarning.value = true
+          } else {
+            aiSearchResults.value = validResults
+            showThresholdWarning.value = false
+          }
           // Store AI model information for UI display
-          aiModelInfo.value = searchData
+          aiModelInfo.value = {
+            ...searchData,
+            totalResults: validResults.length, // Update total to reflect filtered count
+            searchStrategy: searchData.searchStrategy || 'Enhanced AI Search',
+            aiSearchUsed: searchData.aiSearchUsed !== undefined ? searchData.aiSearchUsed : true,
+            searchCriteria: searchData.searchCriteria || null,
+            searchInsights: searchData.searchInsights || {}
+          }
           // Clear normal search results when using AI search
           imageStore.images = []
           
           // Log AI model information
           console.log('🧠 AI Model Information:')
-          console.log('- Search Strategy:', searchData.searchStrategy)
-          console.log('- AI Search Used:', searchData.aiSearchUsed)
-          console.log('- Total Results:', searchData.totalResults)
-          console.log('- Search Criteria:', searchData.searchCriteria)
-          console.log('- Search Insights:', searchData.searchInsights)
+          console.log('- Search Strategy:', aiModelInfo.value.searchStrategy)
+          console.log('- AI Search Used:', aiModelInfo.value.aiSearchUsed)
+          console.log('- Total Results (after filtering):', validResults.length)
+          console.log('- Search Criteria:', aiModelInfo.value.searchCriteria)
+          console.log('- Search Insights:', aiModelInfo.value.searchInsights)
           
           // Check if AI was actually used
-          if (!searchData.aiSearchUsed) {
+          if (!aiModelInfo.value.aiSearchUsed) {
             console.warn('⚠️ AI Search was not used - AI model may not be configured')
-            console.log('📋 Fallback strategy applied:', searchData.searchStrategy)
+            console.log('📋 Fallback strategy applied:', aiModelInfo.value.searchStrategy)
             console.log('🔧 Backend AI Configuration Required:')
             console.log('  - Check SparkAI service configuration')
             console.log('  - Verify AI model API keys')
@@ -450,29 +545,27 @@ const performSearch = async (page: number = 0) => {
           }
           
           // Display AI model info in UI
-          if (searchData.searchInsights) {
+          if (aiModelInfo.value.searchInsights && Object.keys(aiModelInfo.value.searchInsights).length > 0) {
             console.log('🎯 AI Model Details:')
-            Object.entries(searchData.searchInsights).forEach(([key, value]) => {
+            Object.entries(aiModelInfo.value.searchInsights).forEach(([key, value]) => {
               console.log(`  - ${key}:`, value)
             })
           } else {
             console.log('ℹ️ No AI insights available - AI model not active')
           }
           
-          // If no results found, show helpful message
-          if (searchData.totalResults === 0) {
-            console.log('🔍 No results found for query:', keyword)
-            if (!searchData.aiSearchUsed) {
-              console.log('💡 This is expected when AI model is not configured')
-              console.log('🛠️ To enable AI search: Configure backend AI service')
+          // If no results found after filtering, show helpful message
+          if (validResults.length === 0) {
+            console.log('🔍 No results passed 75% relevance threshold for query:', keyword)
+            if (allResults.length > 0) {
+              console.log(`💡 ${allResults.length} results found but filtered out due to low relevance scores`)
             }
           }
           
           // Success case - no error should be thrown
           console.log('✅ AI Search API call completed successfully')
-        } else if (response.data && response.data.code === 200) {
-          // Handle case where response is successful but data is null/empty
-          console.log('✅ AI Search API returned successful response with empty data')
+        } else {
+          console.log('✅ AI Search API returned successful response with empty or no results')
           aiSearchResults.value = []
           aiModelInfo.value = {
             searchStrategy: 'No results found',
@@ -482,10 +575,6 @@ const performSearch = async (page: number = 0) => {
             searchInsights: {}
           }
           imageStore.images = []
-        } else {
-          console.error('❌ AI Search API failed:', response.data?.message || 'Unknown API error')
-          aiModelInfo.value = null
-          throw new Error(response.data?.message || 'AI Search API failed: Unknown API error')
         }
       } catch (aiError) {
         console.error('💥 AI search encountered an error:', aiError)
@@ -528,7 +617,10 @@ const clearSearch = async () => {
   selectedTags.value = []
   isSearching.value = false
   aiSearchResults.value = []
+  allAiSearchResults.value = []
   aiModelInfo.value = null
+  aiCurrentPage.value = 1
+  showThresholdWarning.value = false
   await imageStore.fetchImages(0)
 }
 
@@ -603,6 +695,21 @@ const nextPage = () => {
 const previousPage = () => {
   if (imageStore.hasPrevPage) {
     loadImages(imageStore.pagination.page - 1)
+  }
+}
+
+// AI search pagination functions
+const nextAiPage = () => {
+  if (aiCurrentPage.value < aiTotalPages.value) {
+    aiCurrentPage.value++
+    performSearch(aiCurrentPage.value - 1) // Convert to 0-based index
+  }
+}
+
+const previousAiPage = () => {
+  if (aiCurrentPage.value > 1) {
+    aiCurrentPage.value--
+    performSearch(aiCurrentPage.value - 1) // Convert to 0-based index
   }
 }
 

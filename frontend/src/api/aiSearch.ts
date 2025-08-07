@@ -15,14 +15,13 @@ export interface ScoredResult {
   imageId: number
   image: any
   totalScore: number
-  descriptionScore: number
-  tagScore: number
-  filenameScore: number
-  metadataScore: number
-  bonusScore: number
-  penaltyScore: number
+  aiRelevanceScore: number
+  formatMatchScore: number
+  temporalRelevanceScore: number
+  contentQualityScore: number
   explanation: string
   confidenceLevel: string
+  aiAnalysisUsed: boolean
 }
 
 export interface SearchCriteria {
@@ -39,7 +38,6 @@ export interface SearchCriteria {
   technicalFilters: any
   visualFilters: any
   contentFilters: any
-  searchWeights: any
 }
 
 export interface EnhancedSearchResponse {

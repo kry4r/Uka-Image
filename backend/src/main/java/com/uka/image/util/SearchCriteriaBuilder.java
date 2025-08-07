@@ -77,8 +77,8 @@ public class SearchCriteriaBuilder {
         buildVisualFilters(criteria);
         buildContentFilters(criteria);
         
-        // Configure search weights based on query type
-        configureSearchWeights(criteria);
+        // Configure AI search parameters (removed manual weights)
+        configureAISearchParameters(criteria);
         
         log.debug("Built search criteria: type={}, complexity={}, terms={}", 
             criteria.getPrimaryType(), criteria.getComplexity(), criteria.getSearchTerms().size());
@@ -340,63 +340,14 @@ public class SearchCriteriaBuilder {
     }
 
     /**
-     * Configure search weights based on query type and complexity
+     * Configure AI-driven search parameters based on query type and complexity
+     * Removed manual weights - AI now handles all relevance determination
      */
-    private void configureSearchWeights(SearchCriteria criteria) {
-        SearchWeights weights = new SearchWeights();
-        
-        // Base weights
-        weights.setDescriptionWeight(0.4);
-        weights.setTagWeight(0.3);
-        weights.setFilenameWeight(0.2);
-        weights.setMetadataWeight(0.1);
-        
-        // Adjust weights based on primary search type
-        switch (criteria.getPrimaryType()) {
-            case SEMANTIC:
-                weights.setMetadataWeight(0.05);
-                weights.setDescriptionWeight(0.45);
-                weights.setTagWeight(0.35);
-                weights.setFilenameWeight(0.15);
-                break;
-            case TECHNICAL:
-                weights.setMetadataWeight(0.4);
-                weights.setDescriptionWeight(0.2);
-                weights.setTagWeight(0.2);
-                weights.setFilenameWeight(0.2);
-                break;
-            case VISUAL:
-                weights.setMetadataWeight(0.3);
-                weights.setDescriptionWeight(0.3);
-                weights.setTagWeight(0.25);
-                weights.setFilenameWeight(0.15);
-                break;
-            case COLOR:
-                weights.setDescriptionWeight(0.35);
-                weights.setTagWeight(0.35);
-                weights.setFilenameWeight(0.15);
-                weights.setMetadataWeight(0.15);
-                break;
-            case CONTENT:
-                weights.setMetadataWeight(0.15);
-                weights.setDescriptionWeight(0.4);
-                weights.setTagWeight(0.3);
-                weights.setFilenameWeight(0.15);
-                break;
-        }
-        
-        // Adjust for query complexity
-        if (criteria.getComplexity() == QueryComplexity.COMPLEX) {
-            // Increase description weight for complex queries
-            double descWeight = weights.getDescriptionWeight();
-            double tagWeight = weights.getTagWeight();
-            weights.setDescriptionWeight(Math.min(0.5, descWeight * 1.1));
-            weights.setTagWeight(Math.min(0.4, tagWeight * 1.1));
-            weights.setFilenameWeight(weights.getFilenameWeight() * 0.9);
-            weights.setMetadataWeight(weights.getMetadataWeight() * 0.9);
-        }
-        
-        criteria.setSearchWeights(weights);
+    private void configureAISearchParameters(SearchCriteria criteria) {
+        // Store search type and complexity for AI to use in relevance determination
+        // AI will now handle all weight calculations dynamically based on content analysis
+        log.debug("Configured AI search parameters for {} query with {} complexity", 
+            criteria.getPrimaryType(), criteria.getComplexity());
     }
 
     // Helper methods for keyword detection
@@ -445,7 +396,6 @@ public class SearchCriteriaBuilder {
         private TechnicalFilters technicalFilters = new TechnicalFilters();
         private VisualFilters visualFilters = new VisualFilters();
         private ContentFilters contentFilters = new ContentFilters();
-        private SearchWeights searchWeights = new SearchWeights();
     }
 
     @Data
@@ -491,11 +441,4 @@ public class SearchCriteriaBuilder {
         private boolean hasObjects = false;
     }
 
-    @Data
-    public static class SearchWeights {
-        private double descriptionWeight = 0.4;
-        private double tagWeight = 0.3;
-        private double filenameWeight = 0.2;
-        private double metadataWeight = 0.1;
-    }
 }

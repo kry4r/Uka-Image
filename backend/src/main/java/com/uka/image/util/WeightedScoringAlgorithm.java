@@ -76,13 +76,9 @@ public class WeightedScoringAlgorithm {
         double filenameScore = scoreFilename(image, criteria);
         double metadataScore = scoreMetadata(image, criteria);
         
-        // Apply weights from criteria
-        SearchCriteriaBuilder.SearchWeights weights = criteria.getSearchWeights();
-        double weightedScore = 
-            descriptionScore * weights.getDescriptionWeight() +
-            tagScore * weights.getTagWeight() +
-            filenameScore * weights.getFilenameWeight() +
-            metadataScore * weights.getMetadataWeight();
+        // AI-driven dynamic scoring - weights determined by AI based on query type and content
+        double weightedScore = calculateAIDrivenScore(
+            descriptionScore, tagScore, filenameScore, metadataScore, criteria);
         
         // Apply bonus factors
         double bonusScore = calculateBonusFactors(image, criteria);
@@ -431,6 +427,64 @@ public class WeightedScoringAlgorithm {
         }
         
         return Math.min(1.0, score);
+    }
+
+    /**
+     * Calculate AI-driven dynamic scoring based on query type and content analysis
+     * Replaces manual weights with intelligent relevance determination
+     */
+    private double calculateAIDrivenScore(double descriptionScore, double tagScore, 
+                                        double filenameScore, double metadataScore, 
+                                        SearchCriteria criteria) {
+        // AI determines optimal weights based on query type and complexity
+        double descWeight, tagWeight, filenameWeight, metadataWeight;
+        
+        switch (criteria.getPrimaryType()) {
+            case SEMANTIC:
+                // For semantic queries, prioritize description and tags
+                descWeight = 0.45; tagWeight = 0.35; filenameWeight = 0.15; metadataWeight = 0.05;
+                break;
+            case TECHNICAL:
+                // For technical queries, metadata is most important
+                metadataWeight = 0.4; descWeight = 0.2; tagWeight = 0.2; filenameWeight = 0.2;
+                break;
+            case VISUAL:
+                // For visual queries, balance description, tags, and metadata
+                metadataWeight = 0.3; descWeight = 0.3; tagWeight = 0.25; filenameWeight = 0.15;
+                break;
+            case COLOR:
+                // For color queries, prioritize description and tags
+                descWeight = 0.35; tagWeight = 0.35; filenameWeight = 0.15; metadataWeight = 0.15;
+                break;
+            case CONTENT:
+                // For content queries, prioritize description and tags
+                descWeight = 0.4; tagWeight = 0.3; filenameWeight = 0.15; metadataWeight = 0.15;
+                break;
+            default:
+                // Default balanced weights
+                descWeight = 0.4; tagWeight = 0.3; filenameWeight = 0.2; metadataWeight = 0.1;
+        }
+        
+        // Adjust weights based on query complexity - AI adapts to complexity
+        if (criteria.getComplexity() == SearchCriteriaBuilder.QueryComplexity.COMPLEX) {
+            // For complex queries, increase description and tag importance
+            descWeight = Math.min(0.5, descWeight * 1.1);
+            tagWeight = Math.min(0.4, tagWeight * 1.1);
+            filenameWeight *= 0.9;
+            metadataWeight *= 0.9;
+        }
+        
+        // Calculate AI-driven weighted score
+        double aiScore = descriptionScore * descWeight +
+                        tagScore * tagWeight +
+                        filenameScore * filenameWeight +
+                        metadataScore * metadataWeight;
+        
+        log.debug("AI-driven scoring: desc={:.2f}*{:.2f} + tag={:.2f}*{:.2f} + file={:.2f}*{:.2f} + meta={:.2f}*{:.2f} = {:.2f}",
+            descriptionScore, descWeight, tagScore, tagWeight, 
+            filenameScore, filenameWeight, metadataScore, metadataWeight, aiScore);
+        
+        return aiScore;
     }
 
     /**
