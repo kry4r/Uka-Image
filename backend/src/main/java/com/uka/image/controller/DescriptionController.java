@@ -263,54 +263,6 @@ public class DescriptionController {
         }
     }
 
-    /**
-     * Get AI description suggestions based on image content
-     * This endpoint provides multiple AI-generated description options
-     * 
-     * @param imageId Image ID
-     * @param count Number of suggestions to generate (default: 3, max: 5)
-     * @return API response with description suggestions
-     */
-    @GetMapping("/{imageId}/suggestions")
-    public ApiResponse<DescriptionSuggestions> getDescriptionSuggestions(
-            @PathVariable Long imageId,
-            @RequestParam(value = "count", defaultValue = "3") int count) {
-        
-        try {
-            if (imageId == null || imageId <= 0) {
-                return ApiResponse.badRequest("Valid image ID is required");
-            }
-            
-            if (count <= 0 || count > 5) {
-                return ApiResponse.badRequest("Count must be between 1 and 5");
-            }
-            
-            Image image = imageService.getImageById(imageId);
-            if (image == null) {
-                return ApiResponse.notFound("Image not found");
-            }
-            
-            DescriptionSuggestions suggestions = new DescriptionSuggestions();
-            suggestions.setImageId(imageId);
-            
-            // Generate multiple AI description suggestions
-            // This simulates different AI models or approaches
-            java.util.List<String> suggestionList = new java.util.ArrayList<>();
-            for (int i = 0; i < count; i++) {
-                ImageSearchMetadata metadata = mcpServer.generateAiMetadata(image);
-                suggestionList.add(metadata.getAiDescription());
-            }
-            
-            suggestions.setSuggestions(suggestionList);
-            suggestions.setGeneratedAt(java.time.LocalDateTime.now());
-            
-            return ApiResponse.success("Description suggestions generated", suggestions);
-            
-        } catch (Exception e) {
-            log.error("Failed to generate description suggestions for image {}: {}", imageId, e.getMessage(), e);
-            return ApiResponse.error("Failed to generate suggestions: " + e.getMessage());
-        }
-    }
 
     // DTO Classes
     public static class DescriptionUpdateRequest {
@@ -455,18 +407,4 @@ public class DescriptionController {
         public void setFailureCount(int failureCount) { this.failureCount = failureCount; }
     }
 
-    public static class DescriptionSuggestions {
-        private Long imageId;
-        private java.util.List<String> suggestions;
-        private java.time.LocalDateTime generatedAt;
-        
-        public Long getImageId() { return imageId; }
-        public void setImageId(Long imageId) { this.imageId = imageId; }
-        
-        public java.util.List<String> getSuggestions() { return suggestions; }
-        public void setSuggestions(java.util.List<String> suggestions) { this.suggestions = suggestions; }
-        
-        public java.time.LocalDateTime getGeneratedAt() { return generatedAt; }
-        public void setGeneratedAt(java.time.LocalDateTime generatedAt) { this.generatedAt = generatedAt; }
-    }
 }

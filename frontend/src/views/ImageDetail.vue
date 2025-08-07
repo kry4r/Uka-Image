@@ -57,7 +57,8 @@
         <div class="space-y-6">
           <!-- Basic Info -->
           <div class="card p-6">
-            <h1 class="text-2xl font-bold text-gray-900 mb-4">{{ image.originalName }}</h1>
+            <h1 class="text-2xl font-bold text-gray-900 mb-4">{{ getDisplayName(image) }}</h1>
+            <p class="text-sm text-gray-500 mb-4">Original: {{ image.originalName }}</p>
             
             <div class="space-y-3">
               <div class="flex justify-between">
@@ -347,6 +348,21 @@ const findSimilarImages = async () => {
   } finally {
     loadingSimilar.value = false
   }
+}
+
+const getDisplayName = (image: any): string => {
+  // If fileName exists and is different from originalName, extract custom name
+  if (image.fileName && image.fileName !== image.originalName) {
+    // Remove file extension and hash ID to get custom name
+    const nameWithoutExt = image.fileName.substring(0, image.fileName.lastIndexOf('.'))
+    const lastUnderscoreIndex = nameWithoutExt.lastIndexOf('_')
+    if (lastUnderscoreIndex > 0) {
+      return nameWithoutExt.substring(0, lastUnderscoreIndex)
+    }
+  }
+  // Fallback to original name without extension
+  const lastDotIndex = image.originalName.lastIndexOf('.')
+  return lastDotIndex > 0 ? image.originalName.substring(0, lastDotIndex) : image.originalName
 }
 
 onMounted(async () => {

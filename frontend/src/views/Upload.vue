@@ -72,11 +72,22 @@
                 class="w-16 h-16 object-cover rounded-lg"
               />
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">
-                  {{ file.file.name }}
-                </p>
-                <p class="text-xs text-gray-500">
-                  {{ formatFileSize(file.file.size) }}
+                <!-- Editable Image Name -->
+                <div class="mb-2">
+                  <label class="text-xs text-gray-500 block mb-1">Image Name</label>
+                  <input
+                    v-model="file.customName"
+                    type="text"
+                    placeholder="Enter custom name..."
+                    class="w-full text-sm px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 font-medium"
+                  />
+                  <p class="text-xs text-gray-400 mt-1">
+                    Final name: {{ file.customName || getFileNameWithoutExt(file.file.name) }}_{{ file.hashId }}
+                  </p>
+                </div>
+                
+                <p class="text-xs text-gray-500 mb-2">
+                  Original: {{ file.file.name }} ({{ formatFileSize(file.file.size) }})
                 </p>
                 
                 <!-- Description Input -->
@@ -182,7 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useImageStore } from '@/stores/image'
 import AppLayout from '@/components/Layout/AppLayout.vue'
 import TagInput from '@/components/common/TagInput.vue'
@@ -190,6 +201,8 @@ import TagInput from '@/components/common/TagInput.vue'
 interface FileWithMetadata {
   file: File
   preview: string
+  customName: string
+  hashId: string
   description: string
   tagList: string[]
   uploading: boolean
@@ -255,6 +268,8 @@ const addFiles = (files: File[]) => {
       selectedFiles.value.push({
         file,
         preview: e.target?.result as string,
+        customName: getFileNameWithoutExt(file.name),
+        hashId: generateHashId(),
         description: '',
         tagList: [],
         uploading: false,
@@ -265,6 +280,17 @@ const addFiles = (files: File[]) => {
     }
     reader.readAsDataURL(file)
   })
+}
+
+const generateHashId = (): string => {
+  const timestamp = Date.now().toString(36)
+  const randomStr = Math.random().toString(36).substring(2, 8)
+  return `${timestamp}${randomStr}`
+}
+
+const getFileNameWithoutExt = (filename: string): string => {
+  const lastDotIndex = filename.lastIndexOf('.')
+  return lastDotIndex > 0 ? filename.substring(0, lastDotIndex) : filename
 }
 
 const removeFile = (index: number) => {
@@ -298,7 +324,10 @@ const uploadFiles = async () => {
       // Convert tag list to comma-separated string
       const tagsString = fileData.tagList.join(',')
       
-      await imageStore.uploadImage(fileData.file, fileData.description, tagsString)
+      // Use custom name with hash ID
+      const finalName = fileData.customName || getFileNameWithoutExt(fileData.file.name)
+      
+      await imageStore.uploadImage(fileData.file, fileData.description, tagsString, finalName, fileData.hashId)
       
       clearInterval(progressInterval)
       fileData.progress = 100

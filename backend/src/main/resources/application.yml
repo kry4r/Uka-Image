@@ -58,7 +58,22 @@ app:
     max-size: 52428800  # 50MB in bytes
     use-local-storage: true
     base-url: http://localhost:8080/api/files
-  
+
+# iFlytek Spark AI Configuration
+spark:
+  ai:
+    endpoint: https://spark-api-open.xf-yun.com/v1/chat/completions
+    api-password: ${SPARK_API_PASSWORD:wEsVFmKSPqbZyWurLYaq:XRoMXcnEWpNnXxKsFhUd}  # Real iFlytek Spark AI credentials
+    model: ${SPARK_MODEL:lite}  # Available models: generalv3.5, lite, max-32k, pro-128k, 4.0Ultra
+    enabled: true
+    timeout: 30000  # 30 seconds timeout
+    max-retries: 3
+    # Request parameters
+    temperature: 0.2  # Lower for more consistent results
+    max-tokens: 2048  # Increased for detailed responses
+    top-p: 0.8  # Focused sampling
+    stream: false  # Non-streaming for easier parsing
+
 # Logging Configuration
 logging:
   level:

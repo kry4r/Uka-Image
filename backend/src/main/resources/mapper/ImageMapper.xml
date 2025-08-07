@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uka.image.mapper.ImageMapper">
+
+    <!-- Base result map for Image entity -->
+    <resultMap id="BaseResultMap" type="com.uka.image.entity.Image">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="original_name" property="originalName" />
+        <result column="file_name" property="fileName" />
+        <result column="file_path" property="filePath" />
+        <result column="cos_url" property="cosUrl" />
+        <result column="thumbnail_url" property="thumbnailUrl" />
+        <result column="file_size" property="fileSize" />
+        <result column="file_type" property="fileType" />
+        <result column="width" property="width" />
+        <result column="height" property="height" />
+        <result column="description" property="description" />
+        <result column="tags" property="tags" />
+        <result column="upload_ip" property="uploadIp" />
+        <result column="download_count" property="downloadCount" />
+        <result column="view_count" property="viewCount" />
+        <result column="status" property="status" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+        <result column="deleted" property="deleted" />
+        
+        <!-- Enhanced metadata fields -->
+        <result column="file_format" property="fileFormat" />
+        <result column="color_profile" property="colorProfile" />
+        <result column="dominant_colors" property="dominantColors" />
+        <result column="aspect_ratio" property="aspectRatio" />
+        <result column="resolution_category" property="resolutionCategory" />
+        <result column="compression_quality" property="compressionQuality" />
+        <result column="has_transparency" property="hasTransparency" />
+        <result column="is_animated" property="isAnimated" />
+        <result column="orientation" property="orientation" />
+        <result column="camera_make" property="cameraMake" />
+        <result column="camera_model" property="cameraModel" />
+        <result column="focal_length" property="focalLength" />
+        <result column="aperture" property="aperture" />
+        <result column="iso_speed" property="isoSpeed" />
+        <result column="exposure_time" property="exposureTime" />
+        <result column="ai_generated_tags" property="aiGeneratedTags" />
+        <result column="semantic_keywords" property="semanticKeywords" />
+        <result column="content_category" property="contentCategory" />
+        <result column="visual_complexity_score" property="visualComplexityScore" />
+        <result column="color_temperature" property="colorTemperature" />
+        <result column="brightness_level" property="brightnessLevel" />
+        <result column="contrast_level" property="contrastLevel" />
+        <result column="saturation_level" property="saturationLevel" />
+        <result column="location_latitude" property="locationLatitude" />
+        <result column="location_longitude" property="locationLongitude" />
+        <result column="location_name" property="locationName" />
+    </resultMap>
+
+    <!-- Find all active images with pagination -->
+    <select id="findAllActive" resultMap="BaseResultMap">
+        SELECT * FROM images
+        WHERE status = 1 AND deleted = 0
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- Find images by user ID with pagination -->
+    <select id="findByUserId" resultMap="BaseResultMap">
+        SELECT * FROM images
+        WHERE user_id = #{userId} AND deleted = 0
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- Search images by keyword with pagination -->
+    <select id="searchByKeyword" resultMap="BaseResultMap">
+        SELECT * FROM images
+        WHERE deleted = 0 AND status = 1
+        AND (
+            file_name LIKE CONCAT('%', #{keyword}, '%')
+            OR original_name LIKE CONCAT('%', #{keyword}, '%')
+            OR description LIKE CONCAT('%', #{keyword}, '%')
+            OR tags LIKE CONCAT('%', #{keyword}, '%')
+            OR ai_generated_tags LIKE CONCAT('%', #{keyword}, '%')
+            OR semantic_keywords LIKE CONCAT('%', #{keyword}, '%')
+        )
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- Find recent images with limit -->
+    <select id="findRecentImages" resultMap="BaseResultMap">
+        SELECT * FROM images
+        WHERE deleted = 0 AND status = 1
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- Increment view count -->
+    <update id="incrementViewCount">
+        UPDATE images
+        SET view_count = view_count + 1
+        WHERE id = #{id}
+    </update>
+
+    <!-- Increment download count -->
+    <update id="incrementDownloadCount">
+        UPDATE images
+        SET download_count = download_count + 1
+        WHERE id = #{id}
+    </update>
+
+    <!-- Advanced search with multi-dimensional criteria -->
+    <select id="advancedSearch" resultMap="BaseResultMap">
+        SELECT * FROM images
+        WHERE deleted = 0 AND status = 1
+        <if test="criteria.keywords != null and criteria.keywords.size() > 0">
+            AND (
+                <foreach collection="criteria.keywords" item="keyword" separator=" OR ">
+                    file_name LIKE CONCAT('%', #{keyword}, '%')
+                    OR original_name LIKE CONCAT('%', #{keyword}, '%')
+                    OR description LIKE CONCAT('%', #{keyword}, '%')
+                    OR tags LIKE CONCAT('%', #{keyword}, '%')
+                    OR ai_generated_tags LIKE CONCAT('%', #{keyword}, '%')
+                    OR semantic_keywords LIKE CONCAT('%', #{keyword}, '%')
+                </foreach>
+            )
+        </if>
+        <if test="criteria.technicalFilters.fileFormats != null and criteria.technicalFilters.fileFormats.size() > 0">
+            AND file_format IN
+            <foreach collection="criteria.technicalFilters.fileFormats" item="format" open="(" separator="," close=")">
+                #{format}
+            </foreach>
+        </if>
+        <if test="criteria.technicalFilters.minFileSize != null">
+            AND file_size >= #{criteria.technicalFilters.minFileSize}
+        </if>
+        <if test="criteria.technicalFilters.maxFileSize != null">
+            AND file_size &lt;= #{criteria.technicalFilters.maxFileSize}
+        </if>
+        <if test="criteria.technicalFilters.hasTransparency != null">
+            AND has_transparency = #{criteria.technicalFilters.hasTransparency}
+        </if>
+        <if test="criteria.technicalFilters.isAnimated != null">
+            AND is_animated = #{criteria.technicalFilters.isAnimated}
+        </if>
+        <if test="criteria.visualFilters.orientation != null">
+            AND orientation = #{criteria.visualFilters.orientation}
+        </if>
+        <if test="criteria.visualFilters.minBrightness != null">
+            AND brightness_level >= #{criteria.visualFilters.minBrightness}
+        </if>
+        <if test="criteria.visualFilters.maxBrightness != null">
+            AND brightness_level &lt;= #{criteria.visualFilters.maxBrightness}
+        </if>
+        <if test="criteria.contentFilters.contentCategories != null and criteria.contentFilters.contentCategories.size() > 0">
+            AND content_category IN
+            <foreach collection="criteria.contentFilters.contentCategories" item="category" open="(" separator="," close=")">
+                #{category}
+            </foreach>
+        </if>
+        <if test="criteria.contentFilters.minVisualComplexity != null">
+            AND visual_complexity_score >= #{criteria.contentFilters.minVisualComplexity}
+        </if>
+        <if test="criteria.contentFilters.maxVisualComplexity != null">
+            AND visual_complexity_score &lt;= #{criteria.contentFilters.maxVisualComplexity}
+        </if>
+        ORDER BY 
+        <choose>
+            <when test="criteria.sortBy == 'relevance'">
+                CASE
+                    WHEN description LIKE CONCAT('%', #{criteria.originalQuery}, '%') THEN 3
+                    WHEN tags LIKE CONCAT('%', #{criteria.originalQuery}, '%') THEN 2
+                    WHEN file_name LIKE CONCAT('%', #{criteria.originalQuery}, '%') THEN 1
+                    ELSE 0
+                END DESC,
+                created_at DESC
+            </when>
+            <when test="criteria.sortBy == 'newest'">
+                created_at DESC
+            </when>
+            <when test="criteria.sortBy == 'popular'">
+                view_count DESC
+            </when>
+            <otherwise>
+                created_at DESC
+            </otherwise>
+        </choose>
+    </select>
+</mapper>

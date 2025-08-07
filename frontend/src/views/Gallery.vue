@@ -90,7 +90,7 @@
       </div>
 
       <!-- Loading State -->
-      <div v-if="imageStore.loading" class="flex justify-center py-12">
+      <div v-if="imageStore.loading || aiSearchLoading" class="flex justify-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
 
@@ -103,68 +103,193 @@
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="!imageStore.hasImages" class="text-center py-12">
+      <div v-else-if="!hasResults" class="text-center py-12">
         <div class="max-w-md mx-auto">
           <h3 class="text-lg font-medium text-gray-900 mb-2">
-            {{ isSearching ? 'No images found' : 'No images yet' }}
+            {{ getEmptyStateTitle() }}
           </h3>
           <p class="text-gray-500 mb-6">
-            {{ isSearching ? 'Try adjusting your search criteria' : 'Start by uploading your first image' }}
+            {{ getEmptyStateMessage() }}
           </p>
-          <router-link v-if="!isSearching" to="/upload" class="btn-primary">
+          <router-link v-if="shouldShowUploadButton()" to="/upload" class="btn-primary">
             Upload Images
           </router-link>
         </div>
       </div>
 
-      <!-- Image Grid -->
+      <!-- Results Grid -->
       <div v-else>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          <div
-            v-for="image in imageStore.images"
-            :key="image.id"
-            class="group relative bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
-            @click="openImageDetail(image)"
-          >
-            <div class="aspect-square overflow-hidden rounded-t-lg">
-              <img
-                :src="image.thumbnailUrl || image.cosUrl"
-                :alt="image.originalName"
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-              />
+        <!-- AI Search Results -->
+        <div v-if="searchType === 'ai' && aiSearchResults.length > 0">
+          <div class="mb-4">
+            <div class="flex justify-between items-center mb-2">
+              <h2 class="text-lg font-medium text-gray-900">
+                AI Search Results ({{ aiSearchResults.length }} found)
+              </h2>
+              <span class="text-sm text-purple-600 bg-purple-100 px-2 py-1 rounded">
+                AI-Powered
+              </span>
             </div>
-            <div class="p-4">
-              <h3 class="text-sm font-medium text-gray-900 truncate">
-                {{ image.originalName }}
-              </h3>
-              <p class="text-xs text-gray-500 mt-1">
-                {{ formatFileSize(image.fileSize) }}
-              </p>
-              <p class="text-xs text-gray-400 mt-1">
-                {{ formatDate(image.createdAt) }}
-              </p>
-              <!-- Tags preview -->
-              <div v-if="image.tags" class="flex flex-wrap gap-1 mt-2">
-                <span
-                  v-for="tag in parseTags(image.tags).slice(0, 2)"
-                  :key="tag"
-                  class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
-                >
-                  {{ tag }}
+            
+            <!-- AI Model Information Display -->
+            <div v-if="aiModelInfo" :class="[
+              'border rounded-lg p-3 text-sm',
+              aiModelInfo.aiSearchUsed 
+                ? 'bg-purple-50 border-purple-200' 
+                : 'bg-yellow-50 border-yellow-200'
+            ]">
+              <div class="flex items-center mb-2">
+                <svg v-if="aiModelInfo.aiSearchUsed" class="w-4 h-4 text-purple-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <svg v-else class="w-4 h-4 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"/>
+                </svg>
+                <span :class="[
+                  'font-medium',
+                  aiModelInfo.aiSearchUsed ? 'text-purple-800' : 'text-yellow-800'
+                ]">
+                  AI Model Status: {{ aiModelInfo.aiSearchUsed ? 'Active & Used' : 'Available but Not Used' }}
                 </span>
-                <span
-                  v-if="parseTags(image.tags).length > 2"
-                  class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600"
-                >
-                  +{{ parseTags(image.tags).length - 2 }}
-                </span>
+              </div>
+              <div :class="[
+                'grid grid-cols-1 md:grid-cols-2 gap-2',
+                aiModelInfo.aiSearchUsed ? 'text-purple-700' : 'text-yellow-700'
+              ]">
+                <div><strong>Strategy:</strong> {{ aiModelInfo.searchStrategy || 'Enhanced AI Search' }}</div>
+                <div><strong>AI Used:</strong> {{ aiModelInfo.aiSearchUsed ? 'Yes' : 'No' }}</div>
+                <div><strong>Query Type:</strong> {{ aiModelInfo.searchCriteria?.primaryType || 'N/A' }}</div>
+                <div><strong>Complexity:</strong> {{ aiModelInfo.searchCriteria?.complexity || 'N/A' }}</div>
+              </div>
+              <div v-if="!aiModelInfo.aiSearchUsed" class="mt-2 text-xs text-yellow-600">
+                ⚠️ AI model may not be properly configured or connected. Check backend AI service configuration.
+              </div>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <SearchResultCard
+              v-for="result in aiSearchResults"
+              :key="result.imageId"
+              :result="result"
+              :search-query="searchQuery"
+              @click="openImageDetail(result.image)"
+              class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+            />
+          </div>
+        </div>
+
+        <!-- AI Search Mode - Show all images when no search performed -->
+        <div v-else-if="searchType === 'ai' && !isSearching && imageStore.images.length > 0">
+          <div class="mb-4">
+            <h2 class="text-lg font-medium text-gray-900">
+              All Images - Use AI Search Above
+            </h2>
+            <p class="text-sm text-gray-600 mt-1">
+              Enter a search query above to use AI-powered search
+            </p>
+          </div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div
+              v-for="image in imageStore.images"
+              :key="image.id"
+              class="group relative bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
+              @click="openImageDetail(image)"
+            >
+              <div class="aspect-square overflow-hidden rounded-t-lg">
+                <img
+                  :src="image.thumbnailUrl || image.cosUrl"
+                  :alt="image.originalName"
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                />
+              </div>
+              <div class="p-4">
+                <h3 class="text-sm font-medium text-gray-900 truncate">
+                  {{ getDisplayName(image) }}
+                </h3>
+                <p class="text-xs text-gray-500 mt-1">
+                  {{ formatFileSize(image.fileSize) }}
+                </p>
+                <p class="text-xs text-gray-400 mt-1">
+                  {{ formatDate(image.createdAt) }}
+                </p>
+                <!-- Tags preview -->
+                <div v-if="image.tags" class="flex flex-wrap gap-1 mt-2">
+                  <span
+                    v-for="tag in parseTags(image.tags).slice(0, 2)"
+                    :key="tag"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                  >
+                    {{ tag }}
+                  </span>
+                  <span
+                    v-if="parseTags(image.tags).length > 2"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600"
+                  >
+                    +{{ parseTags(image.tags).length - 2 }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Pagination -->
-        <div class="flex justify-center items-center space-x-4 mt-8">
+        <!-- Normal Search Results -->
+        <div v-else-if="searchType === 'normal' && imageStore.images.length > 0">
+          <div class="mb-4">
+            <h2 class="text-lg font-medium text-gray-900">
+              {{ isSearching ? `Search Results (${imageStore.images.length} found)` : 'All Images' }}
+            </h2>
+          </div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div
+              v-for="image in imageStore.images"
+              :key="image.id"
+              class="group relative bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
+              @click="openImageDetail(image)"
+            >
+              <div class="aspect-square overflow-hidden rounded-t-lg">
+                <img
+                  :src="image.thumbnailUrl || image.cosUrl"
+                  :alt="image.originalName"
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                />
+              </div>
+              <div class="p-4">
+                <h3 class="text-sm font-medium text-gray-900 truncate">
+                  {{ getDisplayName(image) }}
+                </h3>
+                <p class="text-xs text-gray-500 mt-1">
+                  {{ formatFileSize(image.fileSize) }}
+                </p>
+                <p class="text-xs text-gray-400 mt-1">
+                  {{ formatDate(image.createdAt) }}
+                </p>
+                <!-- Tags preview -->
+                <div v-if="image.tags" class="flex flex-wrap gap-1 mt-2">
+                  <span
+                    v-for="tag in parseTags(image.tags).slice(0, 2)"
+                    :key="tag"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                  >
+                    {{ tag }}
+                  </span>
+                  <span
+                    v-if="parseTags(image.tags).length > 2"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600"
+                  >
+                    +{{ parseTags(image.tags).length - 2 }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pagination (only for normal search) -->
+        <div v-if="searchType === 'normal' && imageStore.images.length > 0" class="flex justify-center items-center space-x-4 mt-8">
           <button
             @click="previousPage"
             :disabled="!imageStore.hasPrevPage"
@@ -201,18 +326,25 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useImageStore } from '@/stores/image'
+import { useAiSearchStore } from '@/stores/aiSearch'
 import { imageApi, type Image } from '@/api/image'
+import { aiSearchApi, type ScoredResult } from '@/api/aiSearch'
 import AppLayout from '@/components/Layout/AppLayout.vue'
 import ImageDetailModal from '@/components/common/ImageDetailModal.vue'
+import SearchResultCard from '@/components/search/SearchResultCard.vue'
 
 const router = useRouter()
 const imageStore = useImageStore()
+const aiSearchStore = useAiSearchStore()
 
 // Search and filter state
 const searchType = ref<'normal' | 'ai'>('normal')
 const searchQuery = ref('')
 const selectedTags = ref<string[]>([])
 const isSearching = ref(false)
+const aiSearchResults = ref<ScoredResult[]>([])
+const aiSearchLoading = ref(false)
+const aiModelInfo = ref<any>(null)
 
 // Modal state
 const showDetailModal = ref(false)
@@ -227,6 +359,15 @@ const availableTags = computed(() => {
     }
   })
   return Array.from(tags).sort()
+})
+
+// Check if we have any results to show
+const hasResults = computed(() => {
+  if (searchType.value === 'ai') {
+    // For AI search, show results if we have AI search results OR if we haven't searched yet and there are images
+    return aiSearchResults.value.length > 0 || (!isSearching.value && imageStore.images.length > 0)
+  }
+  return imageStore.images.length > 0
 })
 
 const loadImages = async (page: number = 0) => {
@@ -264,9 +405,118 @@ const performSearch = async (page: number = 0) => {
 
     if (searchType.value === 'normal') {
       await imageStore.searchImages(keyword, page, 20)
+      aiSearchResults.value = []
     } else {
-      // AI search using Spark AI
-      //await imageStore.aiSearchImages(keyword)
+      // Enhanced AI search
+      aiSearchLoading.value = true
+      try {
+        console.log('🤖 Starting AI Search...')
+        console.log('🔍 Search Query:', keyword)
+        console.log('📄 Page:', page + 1, 'Size:', 20)
+        
+        const response = await aiSearchApi.enhancedSearch(keyword, page + 1, 20)
+        
+        console.log('✅ AI Search Response:', response.data)
+        
+        // Check if response has the expected structure
+        if (response.data && response.data.code === 200 && response.data.data) {
+          // Handle the wrapped response format
+          const searchData = response.data.data
+          
+          aiSearchResults.value = searchData.results || []
+          // Store AI model information for UI display
+          aiModelInfo.value = searchData
+          // Clear normal search results when using AI search
+          imageStore.images = []
+          
+          // Log AI model information
+          console.log('🧠 AI Model Information:')
+          console.log('- Search Strategy:', searchData.searchStrategy)
+          console.log('- AI Search Used:', searchData.aiSearchUsed)
+          console.log('- Total Results:', searchData.totalResults)
+          console.log('- Search Criteria:', searchData.searchCriteria)
+          console.log('- Search Insights:', searchData.searchInsights)
+          
+          // Check if AI was actually used
+          if (!searchData.aiSearchUsed) {
+            console.warn('⚠️ AI Search was not used - AI model may not be configured')
+            console.log('📋 Fallback strategy applied:', searchData.searchStrategy)
+            console.log('🔧 Backend AI Configuration Required:')
+            console.log('  - Check SparkAI service configuration')
+            console.log('  - Verify AI model API keys')
+            console.log('  - Ensure AI service is running')
+          } else {
+            console.log('✅ AI Search successfully used!')
+          }
+          
+          // Display AI model info in UI
+          if (searchData.searchInsights) {
+            console.log('🎯 AI Model Details:')
+            Object.entries(searchData.searchInsights).forEach(([key, value]) => {
+              console.log(`  - ${key}:`, value)
+            })
+          } else {
+            console.log('ℹ️ No AI insights available - AI model not active')
+          }
+          
+          // If no results found, show helpful message
+          if (searchData.totalResults === 0) {
+            console.log('🔍 No results found for query:', keyword)
+            if (!searchData.aiSearchUsed) {
+              console.log('💡 This is expected when AI model is not configured')
+              console.log('🛠️ To enable AI search: Configure backend AI service')
+            }
+          }
+          
+          // Success case - no error should be thrown
+          console.log('✅ AI Search API call completed successfully')
+        } else if (response.data && response.data.code === 200) {
+          // Handle case where response is successful but data is null/empty
+          console.log('✅ AI Search API returned successful response with empty data')
+          aiSearchResults.value = []
+          aiModelInfo.value = {
+            searchStrategy: 'No results found',
+            aiSearchUsed: false,
+            totalResults: 0,
+            searchCriteria: null,
+            searchInsights: {}
+          }
+          imageStore.images = []
+        } else {
+          console.error('❌ AI Search API failed:', response.data?.message || 'Unknown API error')
+          aiModelInfo.value = null
+          throw new Error(response.data?.message || 'AI Search API failed: Unknown API error')
+        }
+      } catch (aiError) {
+        console.error('💥 AI search encountered an error:', aiError)
+        
+        // Only show error message if it's a real API error, not a parsing issue
+        if (aiError.message && !aiError.message.includes('AI Search API failed: Unknown API error')) {
+          console.log('🔄 Falling back to normal search...')
+          // Fallback to normal search only if there's a real error
+          try {
+            await imageStore.searchImages(keyword, page, 20)
+            aiSearchResults.value = []
+            aiModelInfo.value = null
+            console.log('✅ Fallback to normal search completed')
+          } catch (fallbackError) {
+            console.error('❌ Fallback search also failed:', fallbackError)
+          }
+        } else {
+          // For parsing errors, just clear the results but don't fallback
+          console.log('🔧 Response parsing issue - clearing results')
+          aiSearchResults.value = []
+          aiModelInfo.value = {
+            searchStrategy: 'Response parsing failed',
+            aiSearchUsed: false,
+            totalResults: 0,
+            searchCriteria: null,
+            searchInsights: {}
+          }
+        }
+      } finally {
+        aiSearchLoading.value = false
+      }
     }
   } catch (error) {
     console.error('Search failed:', error)
@@ -277,6 +527,8 @@ const clearSearch = async () => {
   searchQuery.value = ''
   selectedTags.value = []
   isSearching.value = false
+  aiSearchResults.value = []
+  aiModelInfo.value = null
   await imageStore.fetchImages(0)
 }
 
@@ -368,6 +620,49 @@ const formatDate = (dateString: string): string => {
 
 const parseTags = (tags: string): string[] => {
   return tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+}
+
+const getDisplayName = (image: Image): string => {
+  // If fileName exists and is different from originalName, extract custom name
+  if (image.fileName && image.fileName !== image.originalName) {
+    // Remove file extension and hash ID to get custom name
+    const nameWithoutExt = image.fileName.substring(0, image.fileName.lastIndexOf('.'))
+    const lastUnderscoreIndex = nameWithoutExt.lastIndexOf('_')
+    if (lastUnderscoreIndex > 0) {
+      return nameWithoutExt.substring(0, lastUnderscoreIndex)
+    }
+  }
+  // Fallback to original name without extension
+  const lastDotIndex = image.originalName.lastIndexOf('.')
+  return lastDotIndex > 0 ? image.originalName.substring(0, lastDotIndex) : image.originalName
+}
+
+// Helper methods for empty state
+const getEmptyStateTitle = (): string => {
+  if (searchType.value === 'ai' && !isSearching.value) {
+    // AI search mode but no search performed yet
+    return 'Enter a search query'
+  }
+  if (isSearching.value) {
+    return 'No images found'
+  }
+  // Check if there are any images in the store at all
+  return imageStore.images.length === 0 ? 'No images yet' : 'No images to display'
+}
+
+const getEmptyStateMessage = (): string => {
+  if (searchType.value === 'ai' && !isSearching.value) {
+    return 'Use AI search to find images with natural language descriptions'
+  }
+  if (isSearching.value) {
+    return 'Try adjusting your search criteria'
+  }
+  return imageStore.images.length === 0 ? 'Start by uploading your first image' : 'Try a different search or filter'
+}
+
+const shouldShowUploadButton = (): boolean => {
+  // Only show upload button if there are truly no images and not searching
+  return !isSearching.value && imageStore.images.length === 0
 }
 
 onMounted(() => {

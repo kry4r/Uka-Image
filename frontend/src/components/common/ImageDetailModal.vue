@@ -32,7 +32,8 @@
           <!-- Image details -->
           <div class="space-y-4">
             <div>
-              <h3 class="text-xl font-semibold text-gray-900 mb-2">{{ image.originalName }}</h3>
+              <h3 class="text-xl font-semibold text-gray-900 mb-2">{{ getDisplayName(image) }}</h3>
+              <p class="text-sm text-gray-500">Original: {{ image.originalName }}</p>
               <p class="text-sm text-gray-500">Uploaded {{ formatDate(image.createdAt) }}</p>
             </div>
 
@@ -184,5 +185,20 @@ const formatDate = (dateString: string): string => {
 
 const parseTags = (tags: string): string[] => {
   return tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+}
+
+const getDisplayName = (image: Image): string => {
+  // If fileName exists and is different from originalName, extract custom name
+  if (image.fileName && image.fileName !== image.originalName) {
+    // Remove file extension and hash ID to get custom name
+    const nameWithoutExt = image.fileName.substring(0, image.fileName.lastIndexOf('.'))
+    const lastUnderscoreIndex = nameWithoutExt.lastIndexOf('_')
+    if (lastUnderscoreIndex > 0) {
+      return nameWithoutExt.substring(0, lastUnderscoreIndex)
+    }
+  }
+  // Fallback to original name without extension
+  const lastDotIndex = image.originalName.lastIndexOf('.')
+  return lastDotIndex > 0 ? image.originalName.substring(0, lastDotIndex) : image.originalName
 }
 </script>

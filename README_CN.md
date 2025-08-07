@@ -213,44 +213,15 @@ VITE_MAX_FILE_SIZE=10485760  # 10MB（字节）
 VITE_ALLOWED_FILE_TYPES=image/jpeg,image/png,image/gif,image/webp
 ```
 
-## 📚 API 文档
-
-### 图片管理
-- `POST /api/images/upload` - 上传单张图片
-- `POST /api/images/batch-upload` - 批量上传图片
-- `GET /api/images/list` - 获取图片列表（分页）
-- `GET /api/images/{id}` - 根据 ID 获取图片
-- `PUT /api/images/{id}` - 更新图片信息
-- `DELETE /api/images/{id}` - 删除图片
-- `GET /api/images/search` - 根据关键词搜索图片
-
-### AI 搜索
-- `POST /api/search/text` - 基于文本的图片搜索
-- `POST /api/search/visual` - 视觉相似性搜索
-- `POST /api/search/hybrid` - 混合搜索（文本+视觉）
-
-### 文件操作
-- `GET /api/files/uploads/{path}` - 提供上传的文件
-- `POST /api/images/{id}/download` - 下载图片（增加计数器）
-
 ## 🤖 AI 集成
 
 系统通过 MCP（模型上下文协议）支持 AI 驱动的功能：
 
 ### 支持的 AI 服务
-- OpenAI GPT-4 Vision
-- 百度 AI 图像分析
-- 腾讯云 AI
-- 自定义 AI 服务集成
+- 讯飞星火大模型
 
 ### AI 功能
-- 自动图片描述生成
-- 物体检测和标签
-- 场景分类
-- 颜色分析
 - 语义搜索功能
-
-详细的 AI 集成指南请参考 [AI 服务集成指南](docs/ai-integration/AI-Service-Integration-Guide.md)。
 
 ## 🗄️ 存储选项
 

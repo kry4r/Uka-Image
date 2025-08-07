@@ -36,18 +36,6 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    meta: {
-    }
-  },
-  {
-    path: '/album/:id',
-    name: 'AlbumDetail',
-    props: true,
-    meta: {
-      title: 'Album Details - Uka Image Hosting'
-    }
-  },
-  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     redirect: '/'

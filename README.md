@@ -222,44 +222,15 @@ VITE_MAX_FILE_SIZE=10485760  # 10MB in bytes
 VITE_ALLOWED_FILE_TYPES=image/jpeg,image/png,image/gif,image/webp
 ```
 
-## 📚 API Documentation
-
-### Image Management
-- `POST /api/images/upload` - Upload single image
-- `POST /api/images/batch-upload` - Batch upload images
-- `GET /api/images/list` - Get images with pagination
-- `GET /api/images/{id}` - Get image by ID
-- `PUT /api/images/{id}` - Update image information
-- `DELETE /api/images/{id}` - Delete image
-- `GET /api/images/search` - Search images by keyword
-
-### AI Search
-- `POST /api/search/text` - Text-based image search
-- `POST /api/search/visual` - Visual similarity search
-- `POST /api/search/hybrid` - Hybrid search (text + visual)
-
-### File Operations
-- `GET /api/files/uploads/{path}` - Serve uploaded files
-- `POST /api/images/{id}/download` - Download image (increment counter)
-
 ## 🤖 AI Integration
 
 The system supports AI-powered features through MCP (Model Context Protocol):
 
 ### Supported AI Services
-- OpenAI GPT-4 Vision
-- Baidu AI Image Analysis
-- Tencent Cloud AI
-- Custom AI service integration
+- XunFei Spark AI
 
 ### AI Features
-- Automatic image description generation
-- Object detection and tagging
-- Scene classification
-- Color analysis
 - Semantic search capabilities
-
-For detailed AI integration guide, see [AI Service Integration Guide](docs/ai-integration/AI-Service-Integration-Guide.md).
 
 ## 🗄️ Storage Options
 
@@ -433,7 +404,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- Documentation: [docs/](docs/)
 - Issues: [GitHub Issues](https://github.com/your-repo/issues)
 - Discussions: [GitHub Discussions](https://github.com/your-repo/discussions)
 

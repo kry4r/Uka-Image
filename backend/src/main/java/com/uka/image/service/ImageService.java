@@ -39,6 +39,9 @@ public class ImageService {
     @Autowired
     private LocalStorageService localStorageService;
 
+    @Autowired
+    private MetadataExtractor metadataExtractor;
+
     private static final List<String> ALLOWED_TYPES = Arrays.asList(
         "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "image/bmp"
     );
@@ -46,7 +49,7 @@ public class ImageService {
     private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
     /**
-     * Upload single image
+     * Upload single image (backward compatibility)
      * 
      * @param file MultipartFile
      * @param userId User ID
@@ -57,6 +60,23 @@ public class ImageService {
      */
     @Transactional
     public Image uploadImage(MultipartFile file, Long userId, String description, String tags, String uploadIp) {
+        return uploadImage(file, userId, description, tags, uploadIp, null, null);
+    }
+
+    /**
+     * Upload single image with custom name and hash ID
+     * 
+     * @param file MultipartFile
+     * @param userId User ID
+     * @param description Image description
+     * @param tags Image tags
+     * @param uploadIp Upload IP
+     * @param customName Custom image name
+     * @param hashId Unique hash ID
+     * @return Image entity
+     */
+    @Transactional
+    public Image uploadImage(MultipartFile file, Long userId, String description, String tags, String uploadIp, String customName, String hashId) {
         // Validate file
         validateFile(file);
 
@@ -66,9 +86,25 @@ public class ImageService {
             int width = bufferedImage.getWidth();
             int height = bufferedImage.getHeight();
 
-            // Upload to local storage
+            // Generate final filename with custom name and hash ID
             String originalFilename = file.getOriginalFilename();
-            String fileUrl = localStorageService.uploadFile(file, originalFilename);
+            String fileExtension = getFileExtension(originalFilename);
+            
+            // Use custom name if provided, otherwise use original filename without extension
+            String baseName = (customName != null && !customName.trim().isEmpty()) 
+                ? customName.trim() 
+                : getFileNameWithoutExtension(originalFilename);
+            
+            // Generate hash ID if not provided
+            String finalHashId = (hashId != null && !hashId.trim().isEmpty()) 
+                ? hashId.trim() 
+                : generateHashId();
+            
+            // Create final filename: customName_hashId.extension
+            String finalFilename = baseName + "_" + finalHashId + fileExtension;
+
+            // Upload to local storage with final filename
+            String fileUrl = localStorageService.uploadFile(file, finalFilename);
 
             // Extract filename from URL for database storage
             String fileName = fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
@@ -90,9 +126,36 @@ public class ImageService {
             image.setUploadIp(uploadIp);
             image.setStatus(Image.Status.ACTIVE);
 
-            // Save to database
+            // Save to database first to get the ID
             imageMapper.insert(image);
-            log.info("Image uploaded successfully: {}", image.getId());
+            
+            // Extract comprehensive metadata using MetadataExtractor
+            try {
+                // Create temporary file for metadata extraction
+                java.io.File tempFile = java.io.File.createTempFile("metadata_", fileExtension);
+                file.transferTo(tempFile);
+                
+                // Extract metadata and update image entity
+                image = metadataExtractor.extractMetadata(tempFile, image);
+                
+                // Generate AI tags based on extracted metadata
+                String aiTags = metadataExtractor.generateAITags(image);
+                image.setAiGeneratedTags(aiTags);
+                
+                // Update image with extracted metadata
+                imageMapper.updateById(image);
+                
+                // Clean up temporary file
+                tempFile.delete();
+                
+                log.info("Metadata extraction completed for image: {}", image.getId());
+                
+            } catch (Exception e) {
+                log.warn("Failed to extract metadata for image {}: {}", image.getId(), e.getMessage());
+                // Continue without metadata - image is still uploaded successfully
+            }
+            
+            log.info("Image uploaded successfully with enhanced metadata: {} -> {}", originalFilename, finalFilename);
 
             return image;
 
@@ -100,6 +163,43 @@ public class ImageService {
             log.error("Failed to process image: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to process image: " + e.getMessage());
         }
+    }
+
+    /**
+     * Generate unique hash ID
+     * 
+     * @return Hash ID string
+     */
+    private String generateHashId() {
+        String timestamp = String.valueOf(System.currentTimeMillis()).substring(8); // Last 5 digits
+        String randomStr = UUID.randomUUID().toString().substring(0, 6);
+        return timestamp + randomStr;
+    }
+
+    /**
+     * Get file extension from filename
+     * 
+     * @param filename Original filename
+     * @return File extension with dot
+     */
+    private String getFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return "";
+        }
+        return filename.substring(filename.lastIndexOf("."));
+    }
+
+    /**
+     * Get filename without extension
+     * 
+     * @param filename Original filename
+     * @return Filename without extension
+     */
+    private String getFileNameWithoutExtension(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return filename;
+        }
+        return filename.substring(0, filename.lastIndexOf("."));
     }
 
     /**

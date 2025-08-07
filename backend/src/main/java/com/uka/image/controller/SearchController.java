@@ -1,12 +1,19 @@
 package com.uka.image.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.uka.image.dto.ApiResponse;
+import com.uka.image.entity.Image;
 import com.uka.image.mcp.McpServer;
 import com.uka.image.mcp.SearchImageRequest;
 import com.uka.image.mcp.SearchImageResponse;
+import com.uka.image.service.ImageService;
+import com.uka.image.service.SparkAIService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Search REST API Controller integrating with MCPServer
@@ -21,6 +28,12 @@ public class SearchController {
 
     @Autowired
     private McpServer mcpServer;
+
+    @Autowired
+    private ImageService imageService;
+
+    @Autowired
+    private SparkAIService sparkAIService;
 
     /**
      * AI-powered image search using search_image interface

@@ -96,7 +96,64 @@ export const useImageStore = defineStore('image', () => {
     }
   }
 
-  const uploadImage = async (file: File, description?: string, tags?: string) => {
+  const aiSearchImages = async (query: string, page: number = 0, size: number = 20) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await imageApi.aiSearch(query, page, size)
+      const apiData = response.data
+      
+      // AI search returns data directly in the data field (not nested)
+      images.value = apiData.data || apiData || []
+      
+      // For AI search, we don't have traditional pagination info
+      // So we estimate based on the returned results
+      pagination.value = {
+        page: page,
+        size: size,
+        totalElements: images.value.length,
+        totalPages: Math.ceil(images.value.length / size)
+      }
+      
+      console.log('AI search completed:', images.value.length, 'images found')
+    } catch (err: any) {
+      error.value = err.message || 'AI search failed'
+      console.error('Error in AI search:', err)
+      // If AI search fails, clear the images to show empty state
+      images.value = []
+      pagination.value = {
+        page: 0,
+        size: size,
+        totalElements: 0,
+        totalPages: 0
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const checkAIHealth = async () => {
+    try {
+      const response = await imageApi.checkAIHealth()
+      return response.data.data === 'OK'
+    } catch (err: any) {
+      console.error('AI health check failed:', err)
+      return false
+    }
+  }
+
+  const getAISearchSuggestions = async () => {
+    try {
+      const response = await imageApi.getAISearchSuggestions()
+      return response.data.data || []
+    } catch (err: any) {
+      console.error('Failed to get AI search suggestions:', err)
+      return []
+    }
+  }
+
+  const uploadImage = async (file: File, description?: string, tags?: string, customName?: string, hashId?: string) => {
     loading.value = true
     error.value = null
     
@@ -105,6 +162,8 @@ export const useImageStore = defineStore('image', () => {
       formData.append('file', file)
       if (description) formData.append('description', description)
       if (tags) formData.append('tags', tags)
+      if (customName) formData.append('customName', customName)
+      if (hashId) formData.append('hashId', hashId)
       
       const response = await imageApi.uploadImage(formData)
       await fetchImages() // Refresh the list
@@ -167,6 +226,9 @@ export const useImageStore = defineStore('image', () => {
     fetchImages,
     fetchImageById,
     searchImages,
+    aiSearchImages,
+    checkAIHealth,
+    getAISearchSuggestions,
     uploadImage,
     updateImageDescription,
     deleteImage,

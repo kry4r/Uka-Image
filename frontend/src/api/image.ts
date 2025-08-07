@@ -98,5 +98,36 @@ export const imageApi = {
   // Get image metadata
   getImageMetadata: (id: number) => {
     return api.get<any>(`/images/${id}/metadata`)
-  }
+  },
+
+  // AI Search with enhanced error logging
+  aiSearch: (query: string, page: number = 0, size: number = 20, options?: {
+    fileFormats?: string,
+    orientation?: string,
+    minScore?: number
+  }) => {
+    const params = new URLSearchParams({
+      query: query,
+      pageNum: (page + 1).toString(),
+      pageSize: size.toString()
+    })
+    
+    if (options?.fileFormats) {
+      params.append('fileFormats', options.fileFormats)
+    }
+    if (options?.orientation) {
+      params.append('orientation', options.orientation)
+    }
+    if (options?.minScore !== undefined) {
+      params.append('minScore', options.minScore.toString())
+    }
+    
+    return api.get<ApiResponse<any>>(`/ai-search/search?${params.toString()}`)
+  },
+
+  // Check AI service health
+  checkAIHealth: () => {
+    return api.get<ApiResponse<string>>('/ai-search/health')
+  },
+
 }

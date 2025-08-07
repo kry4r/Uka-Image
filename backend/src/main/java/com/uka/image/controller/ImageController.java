@@ -38,6 +38,8 @@ public class ImageController {
      * @param file Image file
      * @param description Image description
      * @param tags Image tags
+     * @param customName Custom image name
+     * @param hashId Unique hash ID
      * @param httpRequest HTTP request
      * @return API response with uploaded image
      */
@@ -46,6 +48,8 @@ public class ImageController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "tags", required = false) String tags,
+            @RequestParam(value = "customName", required = false) String customName,
+            @RequestParam(value = "hashId", required = false) String hashId,
             HttpServletRequest httpRequest) {
         
         try {
@@ -56,7 +60,7 @@ public class ImageController {
             // In real application, get user ID from authentication context
             Long userId = 1L;
             
-            Image image = imageService.uploadImage(file, userId, description, tags, uploadIp);
+            Image image = imageService.uploadImage(file, userId, description, tags, uploadIp, customName, hashId);
             
             log.info("Image uploaded successfully: {}", image.getId());
             return ApiResponse.success("Image uploaded successfully", image);

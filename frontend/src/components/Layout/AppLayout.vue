@@ -43,8 +43,8 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 
 const navigationItems = [
-  { name: 'Gallery', path: '/gallery' },
-  { name: 'Upload', path: '/upload' },
+  { name: '图库', path: '/gallery' },
+  { name: '上传', path: '/upload' },
 ]
 
 const isActiveRoute = (path: string) => {
